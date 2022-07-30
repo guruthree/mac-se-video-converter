@@ -173,7 +173,7 @@ int main() {
                     }
 
                     at++;
-                    if (at > 1407) {
+                    if (at > 1407-1) {
                         at = 0;
                         printf("\n");
                     }
