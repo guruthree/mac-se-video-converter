@@ -56,8 +56,6 @@
 #define VSYNC_PIN 19 // pin 25
 #define VIDEO_PIN 18 // pin 24
 
-uint64_t a = 0, b = 0;
-
 // buffer needs to be multiple of 4, 88*8 = 704 bits
 #define BUFFER_LEN_32 22
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
@@ -70,20 +68,14 @@ uint8_t dma_channel;
 // mark data to be sent
 // then disable itself
 void gpio_callback(uint gpio, uint32_t events) {
-    gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
-    dma_channel_start(dma_channel);
-
-    a = to_us_since_boot(get_absolute_time());
+    gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
     gpio_put(PICO_DEFAULT_LED_PIN, true);
-
-    dma_channel_wait_for_finish_blocking(dma_channel);
+    dma_channel_set_write_addr(dma_channel, buffer, true);
     dataready = true;
-
-    printf("on time: %lld\n", a - b);
-    b = a;
 }
 
 int main() {
+    set_sys_clock_khz(CLOCK_SPEED/1e3, true);
     stdio_init_all(); // need to get VGA output working so that there's some isolation from the PC?
 
     gpio_init(PICO_DEFAULT_LED_PIN);
@@ -98,7 +90,7 @@ int main() {
     PIO pio = pio0;
     int pio_sm = 0;
     int pio_offset = pio_add_program(pio, &videoinput_program);
-    videoinput_program_init(pio, pio_sm, pio_offset, 0, CLOCK_DIV);
+    videoinput_program_init(pio, pio_sm, pio_offset, VIDEO_PIN, CLOCK_DIV);
 
     // setup DMA
     dma_channel = dma_claim_unused_channel(true);
@@ -112,8 +104,8 @@ int main() {
     dma_channel_configure(dma_channel,
                           &channel_config,
                           &buffer, // write address
-                          NULL, // read address
-                          BUFFER_LEN_32, // number of data transfers to ( / 4 because 32-bit copies are faster)
+                          &pio->rxf[pio_sm], // read address
+                          BUFFER_LEN_32, // number of data transfers to do
                           false // start immediately
     );
 
@@ -121,13 +113,17 @@ int main() {
     gpio_init(HSYNC_PIN);
     gpio_set_dir(HSYNC_PIN, GPIO_IN);
     gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
-    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
 
     char temp[10];
 
     while (1) {
         sleep_ms(100);
         if (dataready) {
+            printf("waiting\n");
+            dma_channel_wait_for_finish_blocking(dma_channel);
+
+
             for (uint8_t i = 0; i < BUFFER_LEN_8; i++) {
                 memset(temp, 0, 10);
                 for (uint8_t j = 0; j < 8; j ++) {
@@ -137,8 +133,13 @@ int main() {
             }
 
             dataready = false;
-            gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+            printf("sleeping\n");
+            sleep_ms(1000);
+            printf("interrupt enable\n");
+            gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
             gpio_put(PICO_DEFAULT_LED_PIN, false);
         }
+
+        printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
     }
 }
