@@ -55,10 +55,11 @@
 
 // (CLOCK/DV)^-1*SAMPLES*1000 = 1/horizontal sync 
 // sample freq = 28,577,777.77?
-// 1286 samples? 
+// 1286 samples? too few?
+// 1408 samples? 31,288,888.88
 
-#define CLOCK_SPEED 142e6
-#define CLOCK_DIV 4.968895801 // at 120 MHz, every 90 samples would be 1.333 MHz
+#define CLOCK_SPEED 125e6
+#define CLOCK_DIV 3.995028409 // at 120 MHz, every 90 samples would be 1.333 MHz
 
 #define HSYNC_PIN 20 // pin 26
 #define VSYNC_PIN 19 // pin 25
@@ -67,9 +68,9 @@
 // buffer needs to be multiple of 4, 88*8 = 704 bits
 // 4096 took 4576 us
 
-// about 370 lines?
+// about 370 lines? YES
 
-#define BUFFER_LEN_32 14869
+#define BUFFER_LEN_32 16280
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t buffer[BUFFER_LEN_8];
 bool dataready = false;
@@ -169,7 +170,7 @@ int main() {
                     }
 
                     at++;
-                    if (at >= 1286) {
+                    if (at >= 1408) {
                         at = 0;
                         printf("\n");
                     }
