@@ -25,6 +25,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
@@ -59,20 +60,33 @@ uint64_t a = 0, b = 0;
 
 // buffer needs to be multiple of 4, 88*8 = 704 bits
 #define BUFFER_LEN_32 22
-uint8_t buffer[BUFFER_LEN_32*4];
+#define BUFFER_LEN_8 BUFFER_LEN_32*4
+uint8_t buffer[BUFFER_LEN_8];
+bool dataready = false;
 
+uint8_t dma_channel;
 
 // this should wait for an h-sync
 // mark data to be sent
 // then disable itself
 void gpio_callback(uint gpio, uint32_t events) {
+    gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
+    
     a = to_us_since_boot(get_absolute_time());
+
+    dma_channel_start(dma_channel);
+    dma_channel_wait_for_finish_blocking(dma_channel);
+    dataready = true;
+
     printf("on time: %lld\n", a - b);
     b = a;
 }
 
 int main() {
     stdio_init_all(); // need to get VGA output working so that there's some isolation from the PC?
+
+    sleep_ms(5000);
+    printf("hello world\n");
 
     // setup and init the PIO
     PIO pio = pio0;
@@ -81,7 +95,7 @@ int main() {
     videoinput_program_init(pio, pio_sm, pio_offset, 0, CLOCK_DIV);
 
     // setup DMA
-    uint8_t dma_channel = dma_claim_unused_channel(true);
+    dma_channel = dma_claim_unused_channel(true);
     dma_channel_config channel_config = dma_channel_get_default_config(dma_channel);
 
     channel_config_set_transfer_data_size(&channel_config, DMA_SIZE_32); // read 32 bits at a time
@@ -97,15 +111,27 @@ int main() {
                           false // start immediately
     );
 
-    sleep_ms(5000);
-    printf("hello world\n");
-
+    // setup interrupt on hsync
     gpio_init(HSYNC_PIN);
     gpio_set_dir(HSYNC_PIN, GPIO_IN);
     gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
     gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
+    char temp[10];
+
     while (1) {
         sleep_ms(100);
+        if (dataready) {
+            for (uint8_t i = 0; i < BUFFER_LEN_8; i++) {
+                memset(temp, 0, 10);
+                for (uint8_t j = 0; j < 8; j ++) {
+                    sprintf(&temp[j], "%d\n", (buffer[i] & (1 << j)) >> j);
+                }
+                printf(temp);
+            }
+
+            dataready = false;
+            gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+        }
     }
 }

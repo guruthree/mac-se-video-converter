@@ -17,6 +17,9 @@ target_link_libraries(mac
     pico_stdlib
     hardware_pio
     hardware_dma
+    pico_malloc
+	pico_mem_ops
+    pico_float
 )
 pico_add_extra_outputs(mac)
 

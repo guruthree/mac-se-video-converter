@@ -36,7 +36,7 @@
 
 #define PIN_COUNT 1
 static inline void videoinput_program_init(PIO pio, uint sm, uint offset, uint pin_base, float divider) {
-    for(uint i=pin_base; i<pin_base+PIN_COUNT; i++) {
+    for(uint8_t i=pin_base; i<pin_base+PIN_COUNT; i++) {
         pio_gpio_init(pio, i);
     }
     pio_sm_set_consecutive_pindirs(pio, sm, pin_base, PIN_COUNT, false);
