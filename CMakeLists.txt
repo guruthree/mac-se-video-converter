@@ -11,8 +11,14 @@ add_executable(mac
     mac.c
 )
 
+pico_generate_pio_header(mac ${CMAKE_CURRENT_LIST_DIR}/videoinput.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
+
+target_link_libraries(mac
+    pico_stdlib
+    hardware_pio
+    hardware_dma
+)
 pico_add_extra_outputs(mac)
-target_link_libraries(mac pico_stdlib)
 
 pico_enable_stdio_usb(mac 1)
 pico_enable_stdio_uart(mac 0)
