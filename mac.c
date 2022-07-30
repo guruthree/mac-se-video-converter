@@ -71,10 +71,11 @@ uint8_t dma_channel;
 // then disable itself
 void gpio_callback(uint gpio, uint32_t events) {
     gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
-    
-    a = to_us_since_boot(get_absolute_time());
-
     dma_channel_start(dma_channel);
+
+    a = to_us_since_boot(get_absolute_time());
+    gpio_put(PICO_DEFAULT_LED_PIN, true);
+
     dma_channel_wait_for_finish_blocking(dma_channel);
     dataready = true;
 
@@ -85,8 +86,13 @@ void gpio_callback(uint gpio, uint32_t events) {
 int main() {
     stdio_init_all(); // need to get VGA output working so that there's some isolation from the PC?
 
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+    gpio_put(PICO_DEFAULT_LED_PIN, true);
+
     sleep_ms(5000);
     printf("hello world\n");
+    gpio_put(PICO_DEFAULT_LED_PIN, false);
 
     // setup and init the PIO
     PIO pio = pio0;
@@ -132,6 +138,7 @@ int main() {
 
             dataready = false;
             gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+            gpio_put(PICO_DEFAULT_LED_PIN, false);
         }
     }
 }
