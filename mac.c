@@ -53,13 +53,16 @@
 // 1.1 ms vertical sync pulse?
 // 0.045 ms per horizontal line? (22.22 KHz vs 22.25 KHz?)
 
-// (CLOCK/DV)^-1*SAMPLES*1000 = 1/horizontal sync 
-// sample freq = 28,577,777.77?
+// (CLOCK/DV)^-1*SAMPLES*1000 = 1/(horizontal sync in microseconds)
+// sample freq = 28,577,777.77 MHz?
 // 1286 samples? too few?
-// 1408 samples? 31,288,888.88
+// 1408 samples? 31,288,888.88 MHz
+// 1407 samples at 22.25 instead of 22.22?
+// 1/((1/22.25)/1000/1407) = 31,305,750 MHz
+
 
 #define CLOCK_SPEED 125e6
-#define CLOCK_DIV 3.995028409 // at 120 MHz, every 90 samples would be 1.333 MHz
+#define CLOCK_DIV 3.992876708
 
 #define HSYNC_PIN 20 // pin 26
 #define VSYNC_PIN 19 // pin 25
@@ -70,7 +73,7 @@
 
 // about 370 lines? YES
 
-#define BUFFER_LEN_32 16280
+#define BUFFER_LEN_32 16268
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t buffer[BUFFER_LEN_8];
 bool dataready = false;
@@ -170,7 +173,7 @@ int main() {
                     }
 
                     at++;
-                    if (at >= 1408) {
+                    if (at > 1407) {
                         at = 0;
                         printf("\n");
                     }
