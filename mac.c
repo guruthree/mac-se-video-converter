@@ -67,11 +67,20 @@ uint8_t dma_channel;
 // this should wait for an h-sync
 // mark data to be sent
 // then disable itself
+
+uint64_t a = 0, b = 0;
 void gpio_callback(uint gpio, uint32_t events) {
-    gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
-    gpio_put(PICO_DEFAULT_LED_PIN, true);
-    dma_channel_set_write_addr(dma_channel, buffer, true);
-    dataready = true;
+    if (gpio == HSYNC_PIN) {
+        gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        dma_channel_set_write_addr(dma_channel, buffer, true);
+        dataready = true;
+    }
+    else if (gpio == VSYNC_PIN) {
+        a = to_us_since_boot(get_absolute_time());
+        printf("frame time (us): %lld\n", (a - b));
+        b = a;
+    }
 }
 
 int main() {
@@ -115,10 +124,18 @@ int main() {
     gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
     gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
 
+    // setup interrupt on vsync
+    gpio_init(VSYNC_PIN);
+    gpio_set_dir(VSYNC_PIN, GPIO_IN);
+    gpio_pull_down(VSYNC_PIN); // mac defaults to pulling up
+    gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true);
+//    gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+
     char temp[10];
 
     while (1) {
-        sleep_ms(100);
+        sleep_us(1);
+//        tight_loop_contents();
         if (dataready) {
             printf("waiting\n");
             dma_channel_wait_for_finish_blocking(dma_channel);
@@ -127,7 +144,7 @@ int main() {
             for (uint8_t i = 0; i < BUFFER_LEN_8; i++) {
                 memset(temp, 0, 10);
                 for (uint8_t j = 0; j < 8; j ++) {
-                    sprintf(&temp[j], "%d\n", (buffer[i] & (1 << j)) >> j);
+                    sprintf(&temp[j], "%d", (buffer[i] & (1 << j)) >> j);
                 }
                 printf(temp);
             }
@@ -136,10 +153,11 @@ int main() {
             printf("sleeping\n");
             sleep_ms(1000);
             printf("interrupt enable\n");
-            gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+            gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true);
+//            gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
             gpio_put(PICO_DEFAULT_LED_PIN, false);
         }
 
-        printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
+//        printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
     }
 }
