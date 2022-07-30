@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
+#include "hardware/pio.h"
+#include "hardware/dma.h"
 #include "videoinput.pio.h"
 
 // someone doing something similar with the gameboy
@@ -35,7 +37,7 @@
 // https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851
 
 // http://www.waveguide.se/?article=compact-mac-video-adapter
-// need to read 704 bit between 22.25 kHz pulses?
+// need to read 704(+14+164?) bit between 22.25 kHz pulses?
 
 // scanvideo or scanvideo_dpi for doing VGA
 // seems to let you write out a line at a time of video?
@@ -49,9 +51,15 @@
 #define CLOCK_SPEED 120e6
 #define CLOCK_DIV 90 // at 120 MHz, every 90 samples would be 1.333 MHz
 
+#define HSYNC_PIN 20 // pin 26
+#define VSYNC_PIN 19 // pin 25
+#define VIDEO_PIN 18 // pin 24
+
 uint64_t a = 0, b = 0;
 
-#define SYNC_PIN 2 // pin 4
+// buffer needs to be multiple of 4, 88*8 = 704 bits
+#define BUFFER_LEN_32 22
+uint8_t buffer[BUFFER_LEN_32*4];
 
 
 // this should wait for an h-sync
@@ -66,25 +74,36 @@ void gpio_callback(uint gpio, uint32_t events) {
 int main() {
     stdio_init_all(); // need to get VGA output working so that there's some isolation from the PC?
 
-    // setup the DAC
+    // setup and init the PIO
     PIO pio = pio0;
     int pio_sm = 0;
-    int pio_offset;
-
-    // init PIO
-    pio_offset = pio_add_program(pio, &videoinput_program);
+    int pio_offset = pio_add_program(pio, &videoinput_program);
     videoinput_program_init(pio, pio_sm, pio_offset, 0, CLOCK_DIV);
 
     // setup DMA
-    uint8_t dma_channel;
+    uint8_t dma_channel = dma_claim_unused_channel(true);
+    dma_channel_config channel_config = dma_channel_get_default_config(dma_channel);
+
+    channel_config_set_transfer_data_size(&channel_config, DMA_SIZE_32); // read 32 bits at a time
+    channel_config_set_read_increment(&channel_config, false); // always read from the same place
+    channel_config_set_write_increment(&channel_config, true); // go down the buffer writing
+    channel_config_set_dreq(&channel_config, pio_get_dreq(pio, pio_sm, false));
+
+    dma_channel_configure(dma_channel,
+                          &channel_config,
+                          &buffer, // write address
+                          NULL, // read address
+                          BUFFER_LEN_32, // number of data transfers to ( / 4 because 32-bit copies are faster)
+                          false // start immediately
+    );
 
     sleep_ms(5000);
     printf("hello world\n");
 
-    gpio_init(SYNC_PIN);
-    gpio_set_dir(SYNC_PIN, GPIO_IN);
-    gpio_pull_up(SYNC_PIN);
-    gpio_set_irq_enabled_with_callback(SYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+    gpio_init(HSYNC_PIN);
+    gpio_set_dir(HSYNC_PIN, GPIO_IN);
+    gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
+    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     while (1) {
         sleep_ms(100);

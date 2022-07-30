@@ -54,8 +54,8 @@ static inline void videoinput_program_init(PIO pio, uint sm, uint offset, uint p
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
 
     pio_sm_init(pio, sm, offset, &c);
-    pio_sm_set_enabled(pio, sm, true);
     pio_sm_clear_fifos(pio, sm);
+    pio_sm_set_enabled(pio, sm, true);
 }
 
 %}
