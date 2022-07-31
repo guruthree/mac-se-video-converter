@@ -39,7 +39,7 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
     dma_channel_set_read_addr(dma_chan32, src, false);
     dma_channel_set_write_addr(dma_chan32, dst, true);
     dma_channel_wait_for_finish_blocking(dma_chan32);
-    // if the write addr isn't NULL, it causes some sort of memory contention slowing down the rest of the loop
+    dma_channel_set_read_addr(dma_chan32, NULL, false);
     dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
@@ -71,8 +71,10 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 // 1/((1/22.25)/1000/1407) = 31,305,750 MHz
 // clock_div = 125e6 /  31305750
 
-#define CLOCK_SPEED 125e6
-#define CLOCK_DIV 3.992876708
+// 15.667 MHz pixel clock
+
+#define CLOCK_SPEED 156e6
+#define CLOCK_DIV 9.9
 
 #define HSYNC_PIN 20 // pin 26
 #define VSYNC_PIN 19 // pin 25
@@ -83,7 +85,7 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 #define MAX_LINES 384
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 36  // 1152 bits 
+#define LINEBUFFER_LEN_32 8  // 1152 bits 
 #define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
@@ -211,7 +213,7 @@ int main() {
 
     while (1) {
 //        sleep_us(1);
-        sleep_ms(1000);
+        sleep_ms(2000);
 //        tight_loop_contents();
         if (dataready && !datasent) {
             printf("waiting\n");
@@ -242,6 +244,6 @@ int main() {
             gpio_put(PICO_DEFAULT_LED_PIN, false);
         }
 
-        printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
+        //printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
     }
 }
