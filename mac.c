@@ -89,7 +89,7 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 #define LINE_OFFSET 24
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 25  // 1152 bits 
+#define LINEBUFFER_LEN_32 16  // X*4*8 = # of bits
 #define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
@@ -117,20 +117,28 @@ int pio_sm;
 void gpio_callback(uint gpio, uint32_t events) {
     if (gpio == HSYNC_PIN) {
         pio_sm_clkdiv_restart(pio, pio_sm);
+
 //        if (dma_channel_is_busy(dma_channel)) {
 //            dma_channel_wait_for_finish_blocking(dma_channel);
+//printf("busy\n");
             dma_channel_abort(dma_channel);
+//    pio_sm_set_enabled(pio, pio_sm, false);
+    pio_sm_clear_fifos(pio, pio_sm);
+//    pio_sm_set_enabled(pio, pio_sm, true);
 //        }
 //        else {
 //            pio_sm_clear_fifos(pio, pio_sm);
             if (currentline & 1) { // odd
+//                memset(linebuffer1, 0, LINEBUFFER_LEN_8);
                 dma_channel_set_write_addr(dma_channel, linebuffer1, true);
+//dma_channel_transfer_to_buffer_now(dma_channel, linebuffer1, LINEBUFFER_LEN_32);
             }
             else { // even
+//                memset(linebuffer0, 0, LINEBUFFER_LEN_8);
                 dma_channel_set_write_addr(dma_channel, linebuffer0, true);
+//dma_channel_transfer_to_buffer_now(dma_channel, linebuffer0, LINEBUFFER_LEN_32);
             }
 //        }
-
 
 
         if (currentline > 0) { // copy the previous line into the buffer
@@ -141,6 +149,8 @@ void gpio_callback(uint gpio, uint32_t events) {
                 dmacpy(buffer[currentline], linebuffer1, LINEBUFFER_LEN_8);
             }
         }
+
+//dma_channel_wait_for_finish_blocking(dma_channel);
 
         currentline++;
 //        printf("line %d\n", currentline);
@@ -195,6 +205,7 @@ int main() {
     channel_config_set_read_increment(&channel_config, false); // always read from the same place
     channel_config_set_write_increment(&channel_config, true); // go down the buffer writing
     channel_config_set_dreq(&channel_config, pio_get_dreq(pio, pio_sm, false));
+    channel_config_set_ring(&channel_config, true, 0); // disable wrapping
 
     dma_channel_configure(dma_channel,
                           &channel_config,
