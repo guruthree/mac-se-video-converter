@@ -83,8 +83,8 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 #define MAX_LINES 384
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 40  // 1280 bits 
-#define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*8
+#define LINEBUFFER_LEN_32 36  // 1152 bits 
+#define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t buffer[MAX_LINES][LINEBUFFER_LEN_8];
