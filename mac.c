@@ -38,9 +38,9 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
     dma_channel_set_trans_count(dma_chan32, size / 4, false); // size in 8-bit!!!
     dma_channel_set_read_addr(dma_chan32, src, false);
     dma_channel_set_write_addr(dma_chan32, dst, true);
-    dma_channel_wait_for_finish_blocking(dma_chan32);
-    dma_channel_set_read_addr(dma_chan32, NULL, false);
-    dma_channel_set_write_addr(dma_chan32, NULL, false);
+//    dma_channel_wait_for_finish_blocking(dma_chan32);
+//    dma_channel_set_read_addr(dma_chan32, NULL, false);
+//    dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
 // trying to capture video output from a Macintosh SE Logic Board and convert to VGA
@@ -71,10 +71,10 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 // 1/((1/22.25)/1000/1407) = 31,305,750 MHz
 // clock_div = 125e6 /  31305750
 
-// 15.667 MHz pixel clock
+// 15.6672 MHz pixel clock
 
-#define CLOCK_SPEED 156e6
-#define CLOCK_DIV 9.9
+#define CLOCK_SPEED 188e6
+#define CLOCK_DIV 12 //(188.0/15.6672)
 
 #define HSYNC_PIN 20 // pin 26
 #define VSYNC_PIN 19 // pin 25
@@ -85,11 +85,15 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 #define MAX_LINES 384
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 8  // 1152 bits 
+#define LINEBUFFER_LEN_32 20  // 1152 bits 
 #define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t buffer[MAX_LINES][LINEBUFFER_LEN_8];
+//uint32_t linebuffer0_32[LINEBUFFER_LEN_32];
+//uint32_t linebuffer1_32[LINEBUFFER_LEN_32];
+//uint8_t* linebuffer0 = (uint8_t*)linebuffer0_32;
+//uint8_t* linebuffer1 = (uint8_t*)linebuffer1_32;
 uint8_t linebuffer0[LINEBUFFER_LEN_8];
 uint8_t linebuffer1[LINEBUFFER_LEN_8];
 bool dataready = false, datasent = true;
@@ -97,20 +101,18 @@ bool dataready = false, datasent = true;
 uint16_t currentline = 0;
 
 uint8_t dma_channel;
+PIO pio;
+int pio_sm;
 
 // this should wait for an h-sync
 // mark data to be sent
 // then disable itself
 
+// pio_sm_clkdiv_restart?
+
 void gpio_callback(uint gpio, uint32_t events) {
     if (gpio == HSYNC_PIN) {
-        dma_channel_wait_for_finish_blocking(dma_channel);
-        if (currentline & 1) { // odd
-            dma_channel_set_write_addr(dma_channel, linebuffer1, true);
-        }
-        else { // even
-            dma_channel_set_write_addr(dma_channel, linebuffer0, true);
-        }
+
         if (currentline > 0) { // copy the previous line into the buffer
             if (currentline & 1) { // odd
                 dmacpy(buffer[currentline], linebuffer0, LINEBUFFER_LEN_8);
@@ -119,6 +121,20 @@ void gpio_callback(uint gpio, uint32_t events) {
                 dmacpy(buffer[currentline], linebuffer1, LINEBUFFER_LEN_8);
             }
         }
+
+        if (dma_channel_is_busy(dma_channel)) {
+//            dma_channel_wait_for_finish_blocking(dma_channel);
+            dma_channel_abort(dma_channel);
+        }
+//        else {
+            pio_sm_clear_fifos(pio, pio_sm);
+            if (currentline & 1) { // odd
+                dma_channel_set_write_addr(dma_channel, linebuffer1, true);
+            }
+            else { // even
+                dma_channel_set_write_addr(dma_channel, linebuffer0, true);
+            }
+//        }
         currentline++;
 //        printf("line %d\n", currentline);
     }
@@ -127,15 +143,15 @@ void gpio_callback(uint gpio, uint32_t events) {
             currentline = 0;
             dataready = false;
             datasent = false;
-            gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true);
+            gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
         }
         else {
             printf("new frame ready\n");
             gpio_put(PICO_DEFAULT_LED_PIN, true);
             dataready = true;
             datasent = false;
-            gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
-            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
+            gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
+            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
         }
     }
 }
@@ -152,8 +168,8 @@ int main() {
     printf("hello world\n");
 
     // setup and init the PIO
-    PIO pio = pio0;
-    int pio_sm = 0;
+    pio = pio0;
+    pio_sm = 0;
     int pio_offset = pio_add_program(pio, &videoinput_program);
     videoinput_program_init(pio, pio_sm, pio_offset, VIDEO_PIN, CLOCK_DIV);
 
@@ -199,14 +215,14 @@ int main() {
     gpio_init(HSYNC_PIN);
     gpio_set_dir(HSYNC_PIN, GPIO_IN);
     gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
-//    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+//    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     // setup interrupt on vsync
     gpio_init(VSYNC_PIN);
     gpio_set_dir(VSYNC_PIN, GPIO_IN);
     gpio_pull_down(VSYNC_PIN); // mac defaults to pulling up
-//    gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true);
-    gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+//    gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     gpio_put(PICO_DEFAULT_LED_PIN, false); // LED off we're in normal operation
     printf("normal operation\n");
@@ -237,10 +253,11 @@ int main() {
 
             datasent = true;
             dataready = false;
+            memset(buffer, 0, BUFFER_LEN_8);
             printf("sleeping\n");
-            sleep_ms(5000);
+            sleep_ms(1000);
             printf("interrupt enable\n");
-            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true);
+            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
             gpio_put(PICO_DEFAULT_LED_PIN, false);
         }
 
