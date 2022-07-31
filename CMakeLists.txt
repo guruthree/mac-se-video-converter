@@ -15,6 +15,7 @@ pico_generate_pio_header(mac ${CMAKE_CURRENT_LIST_DIR}/videoinput.pio OUTPUT_DIR
 
 target_link_libraries(mac
     pico_stdlib
+    pico_multicore
     hardware_pio
     hardware_dma
     pico_malloc

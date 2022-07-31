@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
+#include "pico/multicore.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/dma.h"
@@ -145,15 +146,16 @@ void gpio_callback(uint gpio, uint32_t events) {
             gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
         }
         else {
-            printf("new frame ready\n");
             gpio_put(PICO_DEFAULT_LED_PIN, true);
             dataready = true;
             datasent = false;
             gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
-            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
+//            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
         }
     }
 }
+
+void core1_entry();
 
 int main() {
     set_sys_clock_khz(CLOCK_SPEED/1e3, true);
@@ -227,9 +229,18 @@ int main() {
     gpio_put(PICO_DEFAULT_LED_PIN, false); // LED off we're in normal operation
     printf("normal operation\n");
 
+    multicore_launch_core1(core1_entry);
+
     while (1) {
-        sleep_ms(20); // need some sleep or lines turn out crooked...
+        sleep_ms(1000); // need some sleep or lines turn out crooked...
+    }
+}
+
+void core1_entry() {
+    while (1) {
+        sleep_ms(1); // need some sleep or lines turn out crooked...
         if (dataready && !datasent) {
+            printf("data:\n");
             // print out - there may be a problem trying to print lines longer than 4096 characters
             for (uint16_t k = 0; k < MAX_LINES; k++) { // line
                 for (uint16_t i = 0; i < LINEBUFFER_LEN_8; i++) { // byte
@@ -250,10 +261,6 @@ int main() {
             datasent = true;
             dataready = false;
             memset(buffer, 0, BUFFER_LEN_8);
-            printf("sleeping\n");
-            sleep_ms(1000);
-            printf("interrupt enable\n");
-            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
             gpio_put(PICO_DEFAULT_LED_PIN, false);
         }
 
