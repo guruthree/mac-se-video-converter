@@ -32,6 +32,18 @@
 #include "hardware/dma.h"
 #include "videoinput.pio.h"
 
+// fast copies of uint8_t arrays, array length needs to be multiple of 4
+int dma_chan32;
+void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
+    dma_channel_set_trans_count(dma_chan32, size / 4, false);
+    dma_channel_set_read_addr(dma_chan32, src, false);
+    dma_channel_set_write_addr(dma_chan32, dst, true);
+    dma_channel_wait_for_finish_blocking(dma_chan32);
+    // if the write addr isn't NULL, it causes some sort of memory contention slowing down the rest of the loop
+    dma_channel_set_write_addr(dma_chan32, NULL, false);
+}
+
+
 // someone doing something similar with the gameboy
 // https://old.reddit.com/r/raspberrypipico/comments/lux5k6/pio_issue_attempting_to_capture_gameboy_screen/
 
@@ -59,7 +71,13 @@
 // 1408 samples? 31,288,888.88 MHz
 // 1407 samples at 22.25 instead of 22.22?
 // 1/((1/22.25)/1000/1407) = 31,305,750 MHz
+// clock_div = 125e6 /  31305750
 
+// at each hsync record a line, in the blank copy it into big buffer
+// after # of lines print out that buffer
+// vsync to reset position
+
+// usable data = 1024ish, so total size = 1024*370 to start?
 
 #define CLOCK_SPEED 125e6
 #define CLOCK_DIV 3.992876708
@@ -149,6 +167,26 @@ int main() {
     gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
 
 //    char temp[10];
+
+
+
+    // setup dma for dmacopy (faster than memcpy)
+    dma_chan32 = dma_claim_unused_channel(true);
+    dma_channel_config channel_config32 = dma_channel_get_default_config(dma_chan32);
+
+    channel_config_set_transfer_data_size(&channel_config32, DMA_SIZE_32); // transfer 32 bits at a time
+    channel_config_set_read_increment(&channel_config32, true); 
+    channel_config_set_write_increment(&channel_config32, true);
+
+    dma_channel_configure(dma_chan32,
+                          &channel_config32,
+                          NULL, // write address
+                          NULL, // read address
+                          0, // number of data transfers to 
+                          false // start immediately
+    );
+
+
 
     while (1) {
 //        sleep_ms(100);
