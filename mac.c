@@ -43,16 +43,19 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
     dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
+// trying to capture video output from a Macintosh SE Logic Board and convert to VGA
+// http://www.waveguide.se/?article=compact-mac-video-adapter
+// https://tinkerdifferent.com/threads/warpse-25-mhz-68hc000-based-accelerator-for-mac-se.253/page-11#post-10080
+
+// at each hsync record a line, in the blank copy it into big buffer
+// after # of lines print out that buffer
+// vsync to reset position
 
 // someone doing something similar with the gameboy
 // https://old.reddit.com/r/raspberrypipico/comments/lux5k6/pio_issue_attempting_to_capture_gameboy_screen/
 
+// VGA output?
 // https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851
-
-// http://www.waveguide.se/?article=compact-mac-video-adapter
-// need to read 704(+14+164?) bit between 22.25 kHz pulses?
-// https://tinkerdifferent.com/threads/warpse-25-mhz-68hc000-based-accelerator-for-mac-se.253/page-11#post-10080
-
 // scanvideo or scanvideo_dpi for doing VGA
 // seems to let you write out a line at a time of video?
 // some sort of draw n pixels at n colour array of commands?
@@ -60,24 +63,13 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 // scanvideo_minimal and test_pattern seem to be the easiest to interpret resources?
 // https://blog-boochow-com.translate.goog/article/raspberry-pi-pico-vga.html?_x_tr_sl=ja&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=sc
 
-// 60 Hz * 22.25 KHz = 1.335 MHz
 
-// 1.1 ms vertical sync pulse?
-// 0.045 ms per horizontal line? (22.22 KHz vs 22.25 KHz?)
+// 0.045 ms (vs 0.0449438202 ms) per horizontal line? (22.22 KHz vs 22.25 KHz?)
 
 // (CLOCK/DV)^-1*SAMPLES*1000 = 1/(horizontal sync in microseconds)
-// sample freq = 28,577,777.77 MHz?
-// 1286 samples? too few?
-// 1408 samples? 31,288,888.88 MHz
-// 1407 samples at 22.25 instead of 22.22?
+// 1407 samples at 22.25
 // 1/((1/22.25)/1000/1407) = 31,305,750 MHz
 // clock_div = 125e6 /  31305750
-
-// at each hsync record a line, in the blank copy it into big buffer
-// after # of lines print out that buffer
-// vsync to reset position
-
-// usable data = 1024ish, so total size = 1024*370 to start?
 
 #define CLOCK_SPEED 125e6
 #define CLOCK_DIV 3.992876708
@@ -86,15 +78,15 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 #define VSYNC_PIN 19 // pin 25
 #define VIDEO_PIN 18 // pin 24
 
-// buffer needs to be multiple of 4, 88*8 = 704 bits
-// 4096 took 4576 us
-
 // about 370 lines? YES
+// usable data = 1024ish, so total size = 1024*370 to start?
 
+// buffers need to be multiple of 4 for 32 bit copies
 #define BUFFER_LEN_32 16268
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t buffer[BUFFER_LEN_8];
 bool dataready = false;
+uint16_t currentline = 0;
 
 uint8_t dma_channel;
 
@@ -102,20 +94,16 @@ uint8_t dma_channel;
 // mark data to be sent
 // then disable itself
 
-uint64_t a = 0, b = 0;
 void gpio_callback(uint gpio, uint32_t events) {
-//    if (gpio == VSYNC_PIN) {
-//        gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
-        gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
+    if (gpio == HSYNC_PIN) {
+        gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, false);
         gpio_put(PICO_DEFAULT_LED_PIN, true);
         dma_channel_set_write_addr(dma_channel, buffer, true);
         dataready = true;
-//    }
-//    else if (gpio == VSYNC_PIN) {
-        a = to_us_since_boot(get_absolute_time());
-//        printf("frame time (us): %lld\n", (a - b));
-//        b = a;
-//    }
+    }
+    else if (gpio == VSYNC_PIN) {
+        currentline = 0;
+    }
 }
 
 int main() {
@@ -153,23 +141,6 @@ int main() {
                           false // start immediately
     );
 
-    // setup interrupt on hsync
-    gpio_init(HSYNC_PIN);
-    gpio_set_dir(HSYNC_PIN, GPIO_IN);
-    gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
-//    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
-
-    // setup interrupt on vsync
-    gpio_init(VSYNC_PIN);
-    gpio_set_dir(VSYNC_PIN, GPIO_IN);
-    gpio_pull_down(VSYNC_PIN); // mac defaults to pulling up
-//    gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true);
-    gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
-
-//    char temp[10];
-
-
-
     // setup dma for dmacopy (faster than memcpy)
     dma_chan32 = dma_claim_unused_channel(true);
     dma_channel_config channel_config32 = dma_channel_get_default_config(dma_chan32);
@@ -187,21 +158,30 @@ int main() {
     );
 
 
+    // setup interrupt on hsync
+    gpio_init(HSYNC_PIN);
+    gpio_set_dir(HSYNC_PIN, GPIO_IN);
+    gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
+    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+
+    // setup interrupt on vsync
+    gpio_init(VSYNC_PIN);
+    gpio_set_dir(VSYNC_PIN, GPIO_IN);
+    gpio_pull_down(VSYNC_PIN); // mac defaults to pulling up
+    gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true);
+//    gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+
 
     while (1) {
-//        sleep_ms(100);
         sleep_us(1);
 //        tight_loop_contents();
         if (dataready) {
             printf("waiting\n");
             dma_channel_wait_for_finish_blocking(dma_channel);
-            printf("capture duration (us): %lld\n", (to_us_since_boot(get_absolute_time()) - a));
 
             uint32_t at = 0;
             for (uint32_t i = 0; i < BUFFER_LEN_8; i++) {
-//                memset(temp, 0, 10);
                 for (uint8_t j = 0; j < 8; j ++) {
-//                    sprintf(&temp[j], "%d", (buffer[i] & (1 << j)) >> j);
 
                     if (((buffer[i] & (1 << j)) >> j) == 0) {
                         printf("0");
@@ -217,12 +197,6 @@ int main() {
                     }
 
                 }
-//                printf(temp);
-//                at++;
-//                if (at >= 88) {
-//                    at = 0;
-//                    printf("\n");
-//                }
             }
 
             dataready = false;
