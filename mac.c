@@ -32,18 +32,13 @@
 #include "hardware/dma.h"
 #include "videoinput.pio.h"
 
-// fast copies of uint8_t arrays, array length needs to be multiple of 4
+// fast UNSAFE copies of uint8_t arrays, array length needs to be multiple of 4
 int dma_chan32;
 void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
-    if (dma_channel_is_busy(dma_chan32)) {
-        dma_channel_abort(dma_chan32);
-    }
+    dma_channel_abort(dma_chan32); // WARNING THIS IS AN UNSAFE COPY!!!
     dma_channel_set_trans_count(dma_chan32, size / 4, false); // size in 8-bit!!!
     dma_channel_set_read_addr(dma_chan32, src, false);
     dma_channel_set_write_addr(dma_chan32, dst, true);
-//    dma_channel_wait_for_finish_blocking(dma_chan32);
-//    dma_channel_set_read_addr(dma_chan32, NULL, false);
-//    dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
 // trying to capture video output from a Macintosh SE Logic Board and convert to VGA
@@ -85,19 +80,15 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 
 // about 370 lines? YES
 // usable data = 1024ish, so total size = 1024*370 to start?
-#define MAX_LINES 348
-#define LINE_OFFSET 24
+#define MAX_LINES 345
+#define LINE_OFFSET 26
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 16  // X*4*8 = # of bits
+#define LINEBUFFER_LEN_32 22  // X*4*8 = # of bits
 #define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t buffer[MAX_LINES][LINEBUFFER_LEN_8];
-//uint32_t linebuffer0_32[LINEBUFFER_LEN_32];
-//uint32_t linebuffer1_32[LINEBUFFER_LEN_32];
-//uint8_t* linebuffer0 = (uint8_t*)linebuffer0_32;
-//uint8_t* linebuffer1 = (uint8_t*)linebuffer1_32;
 uint8_t linebuffer0[LINEBUFFER_LEN_8];
 uint8_t linebuffer1[LINEBUFFER_LEN_8];
 bool dataready = false, datasent = true;
@@ -118,28 +109,15 @@ void gpio_callback(uint gpio, uint32_t events) {
     if (gpio == HSYNC_PIN) {
         pio_sm_clkdiv_restart(pio, pio_sm);
 
-//        if (dma_channel_is_busy(dma_channel)) {
-//            dma_channel_wait_for_finish_blocking(dma_channel);
-//printf("busy\n");
-            dma_channel_abort(dma_channel);
-//    pio_sm_set_enabled(pio, pio_sm, false);
-    pio_sm_clear_fifos(pio, pio_sm);
-//    pio_sm_set_enabled(pio, pio_sm, true);
-//        }
-//        else {
-//            pio_sm_clear_fifos(pio, pio_sm);
-            if (currentline & 1) { // odd
-//                memset(linebuffer1, 0, LINEBUFFER_LEN_8);
-                dma_channel_set_write_addr(dma_channel, linebuffer1, true);
-//dma_channel_transfer_to_buffer_now(dma_channel, linebuffer1, LINEBUFFER_LEN_32);
-            }
-            else { // even
-//                memset(linebuffer0, 0, LINEBUFFER_LEN_8);
-                dma_channel_set_write_addr(dma_channel, linebuffer0, true);
-//dma_channel_transfer_to_buffer_now(dma_channel, linebuffer0, LINEBUFFER_LEN_32);
-            }
-//        }
+        dma_channel_abort(dma_channel);
+        pio_sm_clear_fifos(pio, pio_sm);
 
+        if (currentline & 1) { // odd
+            dma_channel_set_write_addr(dma_channel, linebuffer1, true);
+        }
+        else { // even
+            dma_channel_set_write_addr(dma_channel, linebuffer0, true);
+        }
 
         if (currentline > 0) { // copy the previous line into the buffer
             if (currentline & 1) { // odd
@@ -150,10 +128,7 @@ void gpio_callback(uint gpio, uint32_t events) {
             }
         }
 
-//dma_channel_wait_for_finish_blocking(dma_channel);
-
         currentline++;
-//        printf("line %d\n", currentline);
     }
     else if (gpio == VSYNC_PIN) {
         // get last line copied?
@@ -253,16 +228,10 @@ int main() {
     printf("normal operation\n");
 
     while (1) {
-//        sleep_us(1);
-        sleep_ms(2000);
-//        tight_loop_contents();
+        sleep_ms(20); // need some sleep or lines turn out crooked...
         if (dataready && !datasent) {
-            printf("waiting\n");
-//            dma_channel_wait_for_finish_blocking(dma_channel);
-
-uint16_t lineline = 0;
+            // print out - there may be a problem trying to print lines longer than 4096 characters
             for (uint16_t k = 0; k < MAX_LINES; k++) { // line
-lineline = 0;
                 for (uint16_t i = 0; i < LINEBUFFER_LEN_8; i++) { // byte
                     for (uint8_t j = 0; j < 8; j ++) { // bit
 
@@ -272,12 +241,6 @@ lineline = 0;
                         else {
                             printf("1,");
                         }
-//lineline += 2;
-//if (lineline >= 2000) {
-//                printf("\n");
-//lineline = 0;
-//}
-
 
                     }
                 }

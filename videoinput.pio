@@ -44,14 +44,11 @@ static inline void videoinput_program_init(PIO pio, uint sm, uint offset, uint p
     pio_sm_config c = videoinput_program_get_default_config(offset); // get a default config, this function call is auto-generated
 
     // change # of bits here if we want to write a 32-bit word and then go through it
-    sm_config_set_in_shift(&c, true, true, 32); // true - shift right, auto push, # of bits
+    sm_config_set_in_shift(&c, true, true, 32); // true - shift right, auto pull, # of bits
 
     sm_config_set_in_pins(&c, pin_base); // why doesn't this have a PIN_COUNT like out_pins?
 
     sm_config_set_clkdiv(&c, divider);
-
-    // join the FIFO buffers to get more DMA throughput?
-//    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_clear_fifos(pio, sm);
