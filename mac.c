@@ -35,6 +35,9 @@
 // fast copies of uint8_t arrays, array length needs to be multiple of 4
 int dma_chan32;
 void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
+    if (dma_channel_is_busy(dma_chan32)) {
+        dma_channel_abort(dma_chan32);
+    }
     dma_channel_set_trans_count(dma_chan32, size / 4, false); // size in 8-bit!!!
     dma_channel_set_read_addr(dma_chan32, src, false);
     dma_channel_set_write_addr(dma_chan32, dst, true);
@@ -82,10 +85,11 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 
 // about 370 lines? YES
 // usable data = 1024ish, so total size = 1024*370 to start?
-#define MAX_LINES 384
+#define MAX_LINES 348
+#define LINE_OFFSET 24
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 20  // 1152 bits 
+#define LINEBUFFER_LEN_32 25  // 1152 bits 
 #define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
@@ -98,7 +102,7 @@ uint8_t linebuffer0[LINEBUFFER_LEN_8];
 uint8_t linebuffer1[LINEBUFFER_LEN_8];
 bool dataready = false, datasent = true;
 // datasent true so we enter at the start of a new frame?
-uint16_t currentline = 0;
+int16_t currentline = -LINE_OFFSET;
 
 uint8_t dma_channel;
 PIO pio;
@@ -112,6 +116,22 @@ int pio_sm;
 
 void gpio_callback(uint gpio, uint32_t events) {
     if (gpio == HSYNC_PIN) {
+        pio_sm_clkdiv_restart(pio, pio_sm);
+//        if (dma_channel_is_busy(dma_channel)) {
+//            dma_channel_wait_for_finish_blocking(dma_channel);
+            dma_channel_abort(dma_channel);
+//        }
+//        else {
+//            pio_sm_clear_fifos(pio, pio_sm);
+            if (currentline & 1) { // odd
+                dma_channel_set_write_addr(dma_channel, linebuffer1, true);
+            }
+            else { // even
+                dma_channel_set_write_addr(dma_channel, linebuffer0, true);
+            }
+//        }
+
+
 
         if (currentline > 0) { // copy the previous line into the buffer
             if (currentline & 1) { // odd
@@ -122,25 +142,19 @@ void gpio_callback(uint gpio, uint32_t events) {
             }
         }
 
-        if (dma_channel_is_busy(dma_channel)) {
-//            dma_channel_wait_for_finish_blocking(dma_channel);
-            dma_channel_abort(dma_channel);
-        }
-//        else {
-            pio_sm_clear_fifos(pio, pio_sm);
-            if (currentline & 1) { // odd
-                dma_channel_set_write_addr(dma_channel, linebuffer1, true);
-            }
-            else { // even
-                dma_channel_set_write_addr(dma_channel, linebuffer0, true);
-            }
-//        }
         currentline++;
 //        printf("line %d\n", currentline);
     }
     else if (gpio == VSYNC_PIN) {
+        // get last line copied?
+/*        if (currentline & 1) { // odd
+            dmacpy(buffer[currentline], linebuffer0, LINEBUFFER_LEN_8);
+        }
+        else { // even
+            dmacpy(buffer[currentline], linebuffer1, LINEBUFFER_LEN_8);
+        }*/
         if (datasent == true) {
-            currentline = 0;
+            currentline = -LINE_OFFSET;
             dataready = false;
             datasent = false;
             gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
@@ -235,7 +249,9 @@ int main() {
             printf("waiting\n");
 //            dma_channel_wait_for_finish_blocking(dma_channel);
 
+uint16_t lineline = 0;
             for (uint16_t k = 0; k < MAX_LINES; k++) { // line
+lineline = 0;
                 for (uint16_t i = 0; i < LINEBUFFER_LEN_8; i++) { // byte
                     for (uint8_t j = 0; j < 8; j ++) { // bit
 
@@ -245,6 +261,12 @@ int main() {
                         else {
                             printf("1,");
                         }
+//lineline += 2;
+//if (lineline >= 2000) {
+//                printf("\n");
+//lineline = 0;
+//}
+
 
                     }
                 }
