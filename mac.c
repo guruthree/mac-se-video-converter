@@ -26,11 +26,13 @@
 
 #include <stdio.h>
 #include <string.h>
+
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/dma.h"
+
 #include "videoinput.pio.h"
 
 // fast UNSAFE copies of uint8_t arrays, array length needs to be multiple of 4
@@ -46,41 +48,36 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 // http://www.waveguide.se/?article=compact-mac-video-adapter
 // https://tinkerdifferent.com/threads/warpse-25-mhz-68hc000-based-accelerator-for-mac-se.253/page-11#post-10080
 
-// at each hsync record a line, in the blank copy it into big buffer
-// after # of lines print out that buffer
-// vsync to reset position
-
-// someone doing something similar with the gameboy
-// https://old.reddit.com/r/raspberrypipico/comments/lux5k6/pio_issue_attempting_to_capture_gameboy_screen/
-
-// VGA output?
-// https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851
-// scanvideo or scanvideo_dpi for doing VGA
-// https://github.com/raspberrypi/pico-extras/tree/master/src/common/pico_scanvideo
-// probably want to use COMPOSABLE_RAW_RUN?
-// seems to let you write out a line at a time of video?
-// some sort of draw n pixels at n colour array of commands?
-// https://github.com/raspberrypi/pico-playground
-// scanvideo_minimal and test_pattern seem to be the easiest to interpret resources?
-// https://blog-boochow-com.translate.goog/article/raspberry-pi-pico-vga.html?_x_tr_sl=ja&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=sc
-// forum post about getting rendered colour working with 640x480
-// https://forums.raspberrypi.com/viewtopic.php?t=305712
-// 1024x768@60 nominal pixel clock of 65 MHz - 188/65 = 2.8923 clock divs - http://tinyvga.com/vga-timing/1024x768@60Hz
-// horizontal sync at 48.363095238095 kHz
-// 188/75 (for @70) would be 2.5067 divs...
-// I need a spreadsheet for this... checking all VGA pixel clocks against 188 and other multiples of the SE pixel clock
-
-
 // the SE's video output:
+// 15.6672 MHz pixel clock
 // 0.045 ms (vs 0.0449438202 ms) per horizontal line? (22.22 KHz vs 22.25 KHz?)
+// 22250/15.6672 = 1420 samples across?
 // need to translate 512x342 resolution
 
-// (CLOCK/DV)^-1*SAMPLES*1000 = 1/(horizontal sync in microseconds)
-// 1407 samples at 22.25
-// 1/((1/22.25)/1000/1407) = 31,305,750 MHz
-// clock_div = 125e6 /  31305750
+// VGA output using
+// https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851
+// with scanvideo_dpi library
+// https://github.com/raspberrypi/pico-extras/tree/master/src/common/pico_scanvideo
+// useful forum thread about using said library
+// https://forums.raspberrypi.com/viewtopic.php?t=305712
+// VGA timings
+// http://tinyvga.com/vga-timing
 
-// 15.6672 MHz pixel clock
+// VGA mode 1024x768@70 has a nominal pixel clock of 75 MHz, 188/75 = 2.50666 clock divs
+// VGA 1024x768 range for (most?) monitors is 60-75 Hz
+// so if we adjust the pixel clock to an even divisor of 188, we get 75.2 MHz
+// this works out to 1024x768@70.2
+// this falls into the range that at least my NEC LCD1450NX can sync to
+// BUT, scanvideo can't do a half divsor, so halve the pixel clock
+// gives a resolution of 512x768, which we can make 512x384 - PERFECT
+
+
+// need an even divisor of the pixel clock for the system clock
+// for both the SE and VGA
+// 188/15.6672 = 12 for the SE
+// 188/37.6 = 5 for VGA
+
+
 
 #define CLOCK_SPEED 188e6
 #define CLOCK_DIV 12 //(188.0/15.6672)
@@ -109,13 +106,9 @@ uint8_t dma_channel;
 PIO pio;
 int pio_sm;
 
-// this should wait for an h-sync
-// mark data to be sent
-// then disable itself
-
-// pio_sm_clkdiv_restart?
-
-void gpio_callback(uint gpio, uint32_t events) {
+// on vsync check if the data has been shown, if so, collect new data
+// if not, setup to collect new data again
+void __isr __time_critical_func(gpio_callback)(uint gpio, uint32_t events) {
     if (gpio == HSYNC_PIN) {
         pio_sm_clkdiv_restart(pio, pio_sm);
 
@@ -141,13 +134,6 @@ void gpio_callback(uint gpio, uint32_t events) {
         currentline++;
     }
     else if (gpio == VSYNC_PIN) {
-        // get last line copied?
-/*        if (currentline & 1) { // odd
-            dmacpy(buffer[currentline], linebuffer0, LINEBUFFER_LEN_8);
-        }
-        else { // even
-            dmacpy(buffer[currentline], linebuffer1, LINEBUFFER_LEN_8);
-        }*/
         if (datasent == true) {
             currentline = -LINE_OFFSET;
             dataready = false;
@@ -232,22 +218,21 @@ int main() {
     gpio_init(VSYNC_PIN);
     gpio_set_dir(VSYNC_PIN, GPIO_IN);
     gpio_pull_down(VSYNC_PIN); // mac defaults to pulling up
+
+    // launch VGA
+    multicore_launch_core1(core1_entry);
+    sleep_ms(5000);
+
+    // VGA is up, go go go!
 //    gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     gpio_put(PICO_DEFAULT_LED_PIN, false); // LED off we're in normal operation
     printf("normal operation\n");
 
-    multicore_launch_core1(core1_entry);
-
-    while (1) {
-        sleep_ms(1000); // need some sleep or lines turn out crooked...
-    }
-}
-
-void core1_entry() {
     while (1) {
         sleep_ms(1); // need some sleep or lines turn out crooked...
+
         if (dataready && !datasent) {
             printf("data:\n");
             // print out - there may be a problem trying to print lines longer than 4096 characters
@@ -274,5 +259,13 @@ void core1_entry() {
         }
 
         //printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
+        sleep_ms(1000); // need some sleep or lines turn out crooked...
+    }
+}
+
+// all things VGA
+void core1_entry() {
+    while (1) {
+        sleep_ms(1);
     }
 }
