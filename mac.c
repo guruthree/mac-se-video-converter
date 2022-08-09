@@ -56,14 +56,24 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 // VGA output?
 // https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851
 // scanvideo or scanvideo_dpi for doing VGA
+// https://github.com/raspberrypi/pico-extras/tree/master/src/common/pico_scanvideo
+// probably want to use COMPOSABLE_RAW_RUN?
 // seems to let you write out a line at a time of video?
 // some sort of draw n pixels at n colour array of commands?
 // https://github.com/raspberrypi/pico-playground
 // scanvideo_minimal and test_pattern seem to be the easiest to interpret resources?
 // https://blog-boochow-com.translate.goog/article/raspberry-pi-pico-vga.html?_x_tr_sl=ja&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=sc
+// forum post about getting rendered colour working with 640x480
+// https://forums.raspberrypi.com/viewtopic.php?t=305712
+// 1024x768@60 nominal pixel clock of 65 MHz - 188/65 = 2.8923 clock divs - http://tinyvga.com/vga-timing/1024x768@60Hz
+// horizontal sync at 48.363095238095 kHz
+// 188/75 (for @70) would be 2.5067 divs...
+// I need a spreadsheet for this... checking all VGA pixel clocks against 188 and other multiples of the SE pixel clock
 
 
+// the SE's video output:
 // 0.045 ms (vs 0.0449438202 ms) per horizontal line? (22.22 KHz vs 22.25 KHz?)
+// need to translate 512x342 resolution
 
 // (CLOCK/DV)^-1*SAMPLES*1000 = 1/(horizontal sync in microseconds)
 // 1407 samples at 22.25
@@ -79,8 +89,7 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 #define VSYNC_PIN 19 // pin 25
 #define VIDEO_PIN 18 // pin 24
 
-// about 370 lines? YES
-// usable data = 1024ish, so total size = 1024*370 to start?
+// about 340 lines? 345 covers some extra to see edges
 #define MAX_LINES 345
 #define LINE_OFFSET 26
 
