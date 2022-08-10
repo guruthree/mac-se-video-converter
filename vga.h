@@ -121,18 +121,24 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
 void vga_init() {
     // initialize video and interrupts on which ever core launches this
     // this also uses pio0!!!
+    // this also uses DMA channels 0, 1, and 2!!!
     scanvideo_setup(&vga_mode);
     scanvideo_timing_enable(true);
 }
 
+float vgalastprint = 0;
 void vga_main() {
     while (true) {
-//        scanvideo_wait_for_vblank();
-//        printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
-//        // original code got input here
-
         scanvideo_scanline_buffer_t *scanline_buffer = scanvideo_begin_scanline_generation(true);
         draw_from_sebuffer(scanline_buffer);
         scanvideo_end_scanline_generation(scanline_buffer);
+
+        if (scanvideo_in_vblank()) {
+            float vganewprint = to_us_since_boot(get_absolute_time())/1.0e6;
+            if (vganewprint - vgalastprint > 10.0f/1000.0f) {
+                vgalastprint = vganewprint;
+                printf("vga now: %f\n", vganewprint);
+            }
+        }
     }
 }

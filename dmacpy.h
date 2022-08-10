@@ -38,7 +38,9 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) { // inline?
 
 // setup dma for dmacopy (faster than memcpy)
 void dmacpy_init() {
-    dma_chan32 = dma_claim_unused_channel(true);
+//    dma_chan32 = dma_claim_unused_channel(true);
+    dma_chan32 = 7;
+    dma_channel_claim(dma_chan32);
     dma_channel_config channel_config32 = dma_channel_get_default_config(dma_chan32);
 
     channel_config_set_transfer_data_size(&channel_config32, DMA_SIZE_32); // transfer 32 bits at a time

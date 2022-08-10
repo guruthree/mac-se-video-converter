@@ -112,6 +112,11 @@ int main() {
     printf("normal operation\n");
 
     se_main();
+
+    // should never reach here
+    while (1) {
+        sleep_ms(1);
+    }
 }
 
 // all things VGA
@@ -119,6 +124,7 @@ void core1_entry() {
     vga_init();
     vga_main();
 
+    // should never reach here
     while (1) {
         sleep_ms(1);
     }

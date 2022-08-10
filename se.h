@@ -92,7 +92,6 @@ void __isr __time_critical_func(gpio_callback)(uint gpio, uint32_t events) {
             dataready = true;
             datasent = false;
             gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
-//            gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
         }
     }
 }
@@ -109,7 +108,9 @@ void se_init() {
     videoinput_program_init(pio, pio_sm, pio_offset, VIDEO_PIN, CLOCK_DIV);
 
     // setup DMA
-    dma_channel = dma_claim_unused_channel(true);
+//    dma_channel = dma_claim_unused_channel(true);
+    dma_channel = 6;
+    dma_channel_claim(dma_channel);
     dma_channel_config channel_config = dma_channel_get_default_config(dma_channel);
 
     channel_config_set_transfer_data_size(&channel_config, DMA_SIZE_32); // read 32 bits at a time
@@ -143,14 +144,15 @@ void se_init() {
     gpio_pull_down(VSYNC_PIN); // mac defaults to pulling up
 }
 
+float selastprint = 0;
 void se_main() {
     while (1) {
         sleep_ms(1); // need some sleep or lines turn out crooked...
 
         if (dataready && !datasent) {
-            printf("data:\n");
+            printf("a frame's ready\n");
             // print out - there may be a problem trying to print lines longer than 4096 characters
-            for (uint16_t k = 0; k < MAX_LINES; k++) { // line
+/*            for (uint16_t k = 0; k < MAX_LINES; k++) { // line
                 for (uint16_t i = 0; i < LINEBUFFER_LEN_8; i++) { // byte
                     for (uint8_t j = 0; j < 8; j ++) { // bit
 
@@ -164,7 +166,8 @@ void se_main() {
                     }
                 }
                 printf("\n");
-            }
+            }*/
+            sleep_ms(30);
 
             datasent = true;
             dataready = false;
@@ -174,5 +177,11 @@ void se_main() {
 
         //printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
         sleep_ms(1000); // need some sleep or lines turn out crooked...
+
+        float senewprint = to_us_since_boot(get_absolute_time())/1.0e6;
+        if (senewprint - selastprint > 10.0f/1000.0f) {
+            selastprint = senewprint;
+            printf("se now: %f\n", senewprint);
+        }
     }
 }
