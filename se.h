@@ -26,9 +26,12 @@
 
 // code having to do with input from the mac
 
-#define HSYNC_PIN 20 // pin 26
-#define VSYNC_PIN 19 // pin 25
-#define VIDEO_PIN 18 // pin 24
+//#define HSYNC_PIN 20 // pin 26
+//#define VSYNC_PIN 19 // pin 25
+//#define VIDEO_PIN 18 // pin 24
+#define HSYNC_PIN 20 // pin 26, UART1_TX
+#define VSYNC_PIN 21 // pin 27, UART1_RX
+#define VIDEO_PIN 22 // pin 29, SD_DAT3
 
 // about 340 lines? 345 covers some extra to see edges
 #define MAX_LINES 345
@@ -95,13 +98,12 @@ void __isr __time_critical_func(gpio_callback)(uint gpio, uint32_t events) {
 }
 
 void se_init() {
-
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
     gpio_put(PICO_DEFAULT_LED_PIN, true);
 
     // setup and init the PIO
-    pio = pio0;
+    pio = pio1;
     pio_sm = 0;
     int pio_offset = pio_add_program(pio, &videoinput_program);
     videoinput_program_init(pio, pio_sm, pio_offset, VIDEO_PIN, CLOCK_DIV);

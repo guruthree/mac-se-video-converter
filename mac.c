@@ -33,6 +33,10 @@
 #include "hardware/pio.h"
 #include "hardware/dma.h"
 
+#include "pico/scanvideo.h"
+#include "pico/scanvideo/composable_scanline.h"
+#include "pico/sync.h"
+
 #include "videoinput.pio.h"
 #include "dmacpy.h"
 
@@ -74,7 +78,7 @@
 #define CLOCK_DIV 12 //(188.0/15.6672)
 
 #include "se.h"
-
+#include "vga.h"
 
 void core1_entry();
 
@@ -97,8 +101,7 @@ int main() {
     // setup dma for dmacopy (faster than memcpy)
     dmacpy_init();
 
-
-    // launch VGA
+    // launch VGA on core1
     multicore_launch_core1(core1_entry);
     sleep_ms(5000);
 
@@ -113,6 +116,9 @@ int main() {
 
 // all things VGA
 void core1_entry() {
+    vga_init();
+    vga_main();
+
     while (1) {
         sleep_ms(1);
     }
