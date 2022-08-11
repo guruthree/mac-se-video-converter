@@ -32,5 +32,5 @@ target_link_libraries(mac
 )
 pico_add_extra_outputs(mac)
 
-pico_enable_stdio_usb(mac 1)
+pico_enable_stdio_usb(mac 0)
 pico_enable_stdio_uart(mac 0)

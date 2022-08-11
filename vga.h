@@ -132,13 +132,5 @@ void vga_main() {
         scanvideo_scanline_buffer_t *scanline_buffer = scanvideo_begin_scanline_generation(true);
         draw_from_sebuffer(scanline_buffer);
         scanvideo_end_scanline_generation(scanline_buffer);
-
-        if (scanvideo_in_vblank()) {
-            float vganewprint = to_us_since_boot(get_absolute_time())/1.0e6;
-            if (vganewprint - vgalastprint > 10.0f/1000.0f) {
-                vgalastprint = vganewprint;
-                printf("vga now: %f\n", vganewprint);
-            }
-        }
     }
 }

@@ -24,7 +24,7 @@
  *
  */
 
-#include <stdio.h>
+//#include <stdio.h>
 #include <string.h>
 
 #include "pico/stdlib.h"
@@ -93,7 +93,7 @@ int main() {
     gpio_put(PICO_DEFAULT_LED_PIN, true);
 
     sleep_ms(5000);
-    printf("hello world\n");
+//    printf("hello world\n");
 
     // setup everything for video capture
     se_init();
@@ -109,7 +109,7 @@ int main() {
     gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     gpio_put(PICO_DEFAULT_LED_PIN, false); // LED off we're in normal operation
-    printf("normal operation\n");
+//    printf("normal operation\n");
 
     se_main();
 

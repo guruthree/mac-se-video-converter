@@ -29,8 +29,8 @@
 //#define HSYNC_PIN 20 // pin 26
 //#define VSYNC_PIN 19 // pin 25
 //#define VIDEO_PIN 18 // pin 24
-#define HSYNC_PIN 20 // pin 26, UART1_TX
 #define VSYNC_PIN 21 // pin 27, UART1_RX
+#define HSYNC_PIN 20 // pin 26, UART1_TX
 #define VIDEO_PIN 22 // pin 29, SD_DAT3
 
 // about 340 lines? 345 covers some extra to see edges
@@ -142,46 +142,22 @@ void se_init() {
     gpio_init(VSYNC_PIN);
     gpio_set_dir(VSYNC_PIN, GPIO_IN);
     gpio_pull_down(VSYNC_PIN); // mac defaults to pulling up
+    gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 }
 
-float selastprint = 0;
 void se_main() {
     while (1) {
         sleep_ms(1); // need some sleep or lines turn out crooked...
 
         if (dataready && !datasent) {
-            printf("a frame's ready\n");
-            // print out - there may be a problem trying to print lines longer than 4096 characters
-/*            for (uint16_t k = 0; k < MAX_LINES; k++) { // line
-                for (uint16_t i = 0; i < LINEBUFFER_LEN_8; i++) { // byte
-                    for (uint8_t j = 0; j < 8; j ++) { // bit
-
-                        if (((sebuffer[k][i] & (1 << j)) >> j) == 0) {
-                            printf("0,");
-                        }
-                        else {
-                            printf("1,");
-                        }
-
-                    }
-                }
-                printf("\n");
-            }*/
             sleep_ms(30);
 
             datasent = true;
             dataready = false;
-            memset(sebuffer, 0, BUFFER_LEN_8);
+//            memset(sebuffer, 0, BUFFER_LEN_8);
             gpio_put(PICO_DEFAULT_LED_PIN, false);
         }
 
-        //printf("now: %f\n", to_us_since_boot(get_absolute_time())/1.0e6);
         sleep_ms(1000); // need some sleep or lines turn out crooked...
-
-        float senewprint = to_us_since_boot(get_absolute_time())/1.0e6;
-        if (senewprint - selastprint > 10.0f/1000.0f) {
-            selastprint = senewprint;
-            printf("se now: %f\n", senewprint);
-        }
     }
 }
