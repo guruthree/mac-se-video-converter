@@ -29,9 +29,7 @@
 //#define CLOCK_DIV 12 //(188.0/15.6672)
 #define CLOCK_DIV 2
 
-//#define HSYNC_PIN 20 // pin 26
-//#define VSYNC_PIN 19 // pin 25
-//#define VIDEO_PIN 18 // pin 24
+// pin assignments
 #define VIDEO_PIN 20 // pin 26, UART1_TX
 #define HSYNC_PIN 21 // pin 27, UART1_RX
 #define VSYNC_PIN 22 // pin 29, SD_DAT3
