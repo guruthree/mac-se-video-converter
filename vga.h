@@ -31,6 +31,8 @@
 #define white 0x7FFF
 #define black 0x0000
 
+#define VERTICAL_OFFSET 21
+
 // http://tinyvga.com/vga-timing/1024x768@70Hz
 // based on pico_scanvideo/vga_modes.c
 const scanvideo_timing_t vga_timing_1024x768_70_default = {
@@ -68,10 +70,11 @@ const scanvideo_mode_t vga_mode_1024x768_70 = {
 #define vga_mode vga_mode_1024x768_70
 
 void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
-    uint16_t line_num = scanvideo_scanline_number(buffer->scanline_id);
+    int16_t line_num = scanvideo_scanline_number(buffer->scanline_id);
+    line_num -= VERTICAL_OFFSET;
 
     uint16_t *p = (uint16_t*)buffer->data;
-    if (line_num >= MAX_LINES) {
+    if (line_num < 0 || line_num >= MAX_LINES) {
         // outside where the mac has data, just draw a black line
         *p++ = COMPOSABLE_COLOR_RUN;
         *p++ = black;
@@ -100,7 +103,7 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
         }
 
         // the last 504 bits are all done the same
-        for (uint16_t c = 1; c < 64; c++) {
+        for (uint16_t c = 1; c < MIN(vga_mode.width/8, LINEBUFFER_LEN_8); c++) {
             for (uint16_t d = 0; d < 8; d++) {
                 *p++ = lookuptable[sebuffer[line_num][c]][d];
             }
