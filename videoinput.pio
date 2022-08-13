@@ -46,7 +46,7 @@
 
     wait 0 pin 2 [0] // wait for vsync
 
-    set x, 26 // skip the first 26 lines of data, nothing there anyway
+    set x, 26 // skip the first LINE_OFFSET lines of data, nothing there anyway
 vblankloop:
     wait 0 pin 1 [0] // fall then
     wait 1 pin 1 [0] // rise makes a complete hsync
