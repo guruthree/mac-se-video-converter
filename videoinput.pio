@@ -29,6 +29,10 @@
 // wait for hsync, then wait for the horizontal back porch
 // then read in the pixels
 
+// useful resources:
+// https://gregchadwick.co.uk/blog/playing-with-the-pico-pt4/
+// https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-c-sdk.pdf
+
 .program videoinput
 
 // pin 0 is data in
