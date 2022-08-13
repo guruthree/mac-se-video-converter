@@ -26,28 +26,27 @@
 
 // code having to do with input from the mac
 
+//#define CLOCK_DIV 12 //(188.0/15.6672)
+#define CLOCK_DIV 2
+
 //#define HSYNC_PIN 20 // pin 26
 //#define VSYNC_PIN 19 // pin 25
 //#define VIDEO_PIN 18 // pin 24
-#define VSYNC_PIN 21 // pin 27, UART1_RX
-#define HSYNC_PIN 20 // pin 26, UART1_TX
-#define VIDEO_PIN 22 // pin 29, SD_DAT3
+#define VIDEO_PIN 20 // pin 26, UART1_TX
+#define HSYNC_PIN 21 // pin 27, UART1_RX
+#define VSYNC_PIN 22 // pin 29, SD_DAT3
 
 // about 340 lines? 345 covers some extra to see edges
-#define MAX_LINES 345
-#define LINE_OFFSET 26
+#define MAX_LINES 342
+//#define MAX_LINES 256
+#define LINE_OFFSET 26 // ignore the first X lines
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 22  // X*4*8 = # of bits
+#define LINEBUFFER_LEN_32 16  // X*4*8 = # of bits (22?) (needs to be long enough to be beyond end of hsync pulse?)
 #define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t sebuffer[MAX_LINES][LINEBUFFER_LEN_8];
-uint8_t linebuffer0[LINEBUFFER_LEN_8];
-uint8_t linebuffer1[LINEBUFFER_LEN_8];
-bool dataready = false, datasent = true;
-// datasent true so we enter at the start of a new frame?
-int16_t currentline = -LINE_OFFSET;
 
 uint8_t dma_channel;
 PIO pio;
@@ -56,50 +55,35 @@ int pio_sm;
 // on vsync check if the data has been shown, if so, collect new data
 // if not, setup to collect new data again
 void __isr __time_critical_func(gpio_callback)(uint gpio, uint32_t events) {
-    if (gpio == HSYNC_PIN) {
-        pio_sm_clkdiv_restart(pio, pio_sm);
+    pio_sm_clkdiv_restart(pio, pio_sm); // so that we sample the pixels at the same time in each row
+    if (gpio == VSYNC_PIN) {
+        if (dma_channel_is_busy(dma_channel))
+            gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
+
 
         dma_channel_abort(dma_channel);
         pio_sm_clear_fifos(pio, pio_sm);
+//        pio_sm_put(pio, pio_sm, LINEBUFFER_LEN_8*8 << 16 | MAX_LINES);
+        pio_sm_put(pio, pio_sm, (LINEBUFFER_LEN_8*8 - 1) << 16 | (MAX_LINES - 1));
+//        pio_sm_put(pio, pio_sm, 128 << 16 | MAX_LINES);
+        dma_channel_set_write_addr(dma_channel, sebuffer, true);
 
-        if (currentline & 1) { // odd
-            dma_channel_set_write_addr(dma_channel, linebuffer1, true);
-        }
-        else { // even
-            dma_channel_set_write_addr(dma_channel, linebuffer0, true);
-        }
-
-        if (currentline > 0) { // copy the previous line into the buffer
-            if (currentline & 1) { // odd
-                dmacpy(sebuffer[currentline], linebuffer0, LINEBUFFER_LEN_8);
-            }
-            else { // even
-                dmacpy(sebuffer[currentline], linebuffer1, LINEBUFFER_LEN_8);
-            }
-        }
-
-        currentline++;
-    }
-    else if (gpio == VSYNC_PIN) {
-        if (datasent == true) {
-            currentline = -LINE_OFFSET;
-            dataready = false;
-            datasent = false;
-            gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
-        }
-        else {
-            gpio_put(PICO_DEFAULT_LED_PIN, true);
-            dataready = true;
-            datasent = false;
-            gpio_set_irq_enabled(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
-        }
+//        gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
+//        gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
+//        dma_channel_wait_for_finish_blocking(dma_channel);
+//        for (int c = 0; c < MAX_LINES; c++) {
+//            sebuffer[c][0] = 0b1000000;
+//        }
+//        sleep_ms(1000);
+//        gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
     }
 }
 
 void se_init() {
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-    gpio_put(PICO_DEFAULT_LED_PIN, true);
+    gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
+    sleep_ms(1000);
+
+    gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
 
     // setup and init the PIO
     pio = pio1;
@@ -123,20 +107,18 @@ void se_init() {
                           &channel_config,
                           &sebuffer, // write address
                           &pio->rxf[pio_sm], // read address
-                          LINEBUFFER_LEN_32, // number of data transfers to do
+                          BUFFER_LEN_32, // number of data transfers to do
                           false // start immediately
     );
 
     // init buffers
     memset(sebuffer, 0, BUFFER_LEN_8);
-    memset(linebuffer0, 0, LINEBUFFER_LEN_8);
-    memset(linebuffer1, 0, LINEBUFFER_LEN_8);
 
-    // setup interrupt on hsync
+    // setup hsync pin (this was also setup by setup by pio init?)
     gpio_init(HSYNC_PIN);
     gpio_set_dir(HSYNC_PIN, GPIO_IN);
     gpio_pull_down(HSYNC_PIN); // mac defaults to pulling up
-//    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+    gpio_set_irq_enabled_with_callback(HSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     // setup interrupt on vsync
     gpio_init(VSYNC_PIN);
@@ -148,16 +130,7 @@ void se_init() {
 void se_main() {
     while (1) {
         sleep_ms(1); // need some sleep or lines turn out crooked...
-
-        if (dataready && !datasent) {
-            sleep_ms(30);
-
-            datasent = true;
-            dataready = false;
-//            memset(sebuffer, 0, BUFFER_LEN_8);
-            gpio_put(PICO_DEFAULT_LED_PIN, false);
-        }
-
-        sleep_ms(1000); // need some sleep or lines turn out crooked...
+        // sleep longer???
+        sleep_ms(1000);
     }
 }

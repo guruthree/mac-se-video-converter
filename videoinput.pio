@@ -28,16 +28,70 @@
 
 .program videoinput
 
+// pin 0 is data in
+// pin 1 is hsync
+// pin 2 is vsync
+
+// x counts lines
+// y counts pixels across
+
 .wrap_target
-    in pins, 1
+
+    wait 0 pin 2 [0] // wait for vsync
+
+    set x, 26 // skip the first 26 lines of data, nothing there anyway
+vblankloop:
+    wait 0 pin 1 [0] // fall then
+    wait 1 pin 1 [0] // rise makes a complete hsync
+    jmp x-- vblankloop
+
+    set x, 0
+    set y, 0
+    pull noblock // move a 32-bit word from the TX FIFO into the OSR
+    out x, 16 // right-hand 16 bits is the number of lines (345)
+    out y, 16 // left-hand 16 bits is the number of pixels across (22*4*8=704)
+    mov osr, y // copy y back to OSR so we can re-use it
+
+
+    wait 0 pin 1 // wait for hsync
+    wait 1 pin 1
+
+hsyncloop:
+    wait 0 pin 1 // wait for hsync
+//   wait 1 pin 1
+    
+    // skip the horizontal porch (194 pixels?)
+    set y, 31
+    nop [4+24] // skip 5 pixels (when also accounting for set)
+pixelskiploop:
+    nop [29] // skip 5 pixels (it's -1 for the jmp)
+    jmp y-- pixelskiploop
+    nop [1] // finishing up from the loop
+    nop [23] // skip 4 pixels
+    nop [17] // skip 3 pixels
+    // total 168 or 173 skipped?
+
+    mov y, osr // need this for subsequent loops
+
+pixelloop:
+    nop [1] // off set a bit the read so the timings match
+    in pins, 1 [2] // read pixel data in every 2 cycles?
+    jmp y-- pixelloop
+
+//    wait 0 pin 1 // wait for hsync
+//    wait 1 pin 1
+
+    jmp x-- hsyncloop
+
 .wrap
 
 % c-sdk {
 
-#define PIN_COUNT 1
+#define PIN_COUNT 3
 static inline void videoinput_program_init(PIO pio, uint sm, uint offset, uint pin_base, float divider) {
     for(uint8_t i=pin_base; i<pin_base+PIN_COUNT; i++) {
         pio_gpio_init(pio, i);
+        gpio_set_dir(i, GPIO_IN);
     }
     pio_sm_set_consecutive_pindirs(pio, sm, pin_base, PIN_COUNT, false);
 
@@ -52,7 +106,7 @@ static inline void videoinput_program_init(PIO pio, uint sm, uint offset, uint p
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_clear_fifos(pio, sm);
-    pio_sm_set_enabled(pio, sm, true);
+    pio_sm_set_enabled(pio, sm, true); // if false, don't run by ourself
 }
 
 %}
