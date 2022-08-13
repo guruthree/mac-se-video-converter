@@ -44,6 +44,7 @@
 // trying to capture video output from a Macintosh SE Logic Board and convert to VGA
 // http://www.waveguide.se/?article=compact-mac-video-adapter
 // https://tinkerdifferent.com/threads/warpse-25-mhz-68hc000-based-accelerator-for-mac-se.253/page-11#post-10080
+// http://www.mac.linux-m68k.org/devel/plushw.php
 
 // the SE's video output:
 // 15.6672 MHz pixel clock

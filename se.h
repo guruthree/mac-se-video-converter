@@ -52,30 +52,26 @@ uint8_t dma_channel;
 PIO pio;
 int pio_sm;
 
-// on vsync check if the data has been shown, if so, collect new data
-// if not, setup to collect new data again
+// the pio program waits for vsync, after which it expects the number of lines and pixels
+// so use the GPIO interrupt to send that data gain
+// at that point the PIO is about to start writing data so set the DMA channel ready to copy to the buffer
+// this is also called for hsync to keep the sub clock divisions aligned with what the mac is actually doing
 void __isr __time_critical_func(gpio_callback)(uint gpio, uint32_t events) {
     pio_sm_clkdiv_restart(pio, pio_sm); // so that we sample the pixels at the same time in each row
     if (gpio == VSYNC_PIN) {
-        if (dma_channel_is_busy(dma_channel))
+        if (dma_channel_is_busy(dma_channel)) {
+            // if this is flashing something has gone wrong
             gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
+            // we need to be ready to copy the new data
+            dma_channel_abort(dma_channel);
+            // clear fifos because if the channel is interrupted there will be old pixel data left
+            pio_sm_clear_fifos(pio, pio_sm);
+        }
 
-
-        dma_channel_abort(dma_channel);
-        pio_sm_clear_fifos(pio, pio_sm);
-//        pio_sm_put(pio, pio_sm, LINEBUFFER_LEN_8*8 << 16 | MAX_LINES);
+        // send how many pixels and lines to read to the PIO program
+        // (this appears to be the only way to set a value of more than 5 bits?)
         pio_sm_put(pio, pio_sm, (LINEBUFFER_LEN_8*8 - 1) << 16 | (MAX_LINES - 1));
-//        pio_sm_put(pio, pio_sm, 128 << 16 | MAX_LINES);
         dma_channel_set_write_addr(dma_channel, sebuffer, true);
-
-//        gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
-//        gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, false);
-//        dma_channel_wait_for_finish_blocking(dma_channel);
-//        for (int c = 0; c < MAX_LINES; c++) {
-//            sebuffer[c][0] = 0b1000000;
-//        }
-//        sleep_ms(1000);
-//        gpio_set_irq_enabled(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true);
     }
 }
 
@@ -111,7 +107,7 @@ void se_init() {
                           false // start immediately
     );
 
-    // init buffers
+    // initialise the buffer
     memset(sebuffer, 0, BUFFER_LEN_8);
 
     // setup hsync pin (this was also setup by setup by pio init?)
@@ -128,9 +124,9 @@ void se_init() {
 }
 
 void se_main() {
+    // we dont actually need to do anything regularly
+    // everything interesting happens in the interrupt
     while (1) {
         sleep_ms(1); // need some sleep or lines turn out crooked...
-        // sleep longer???
-        sleep_ms(1000);
     }
 }

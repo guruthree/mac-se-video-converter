@@ -24,7 +24,10 @@
  *
  */
 
-// we just want to read digital in at a fixed frequency 
+// we just want to read digital in at a fixed frequency
+// wait for vsync, then wait for the vertical back porch
+// wait for hsync, then wait for the horizontal back porch
+// then read in the pixels
 
 .program videoinput
 
@@ -58,7 +61,6 @@ vblankloop:
 
 hsyncloop:
     wait 0 pin 1 // wait for hsync
-//   wait 1 pin 1
     
     // skip the horizontal porch (194 pixels?)
     set y, 31
@@ -71,15 +73,11 @@ pixelskiploop:
     nop [17] // skip 3 pixels
     // total 168 or 173 skipped?
 
-    mov y, osr // need this for subsequent loops
-
+    mov y, osr // load y back with the number of pixels to read
 pixelloop:
     nop [1] // off set a bit the read so the timings match
     in pins, 1 [2] // read pixel data in every 2 cycles?
     jmp y-- pixelloop
-
-//    wait 0 pin 1 // wait for hsync
-//    wait 1 pin 1
 
     jmp x-- hsyncloop
 
