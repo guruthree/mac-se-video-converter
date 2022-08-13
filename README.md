@@ -7,7 +7,7 @@ My use case for this is using an old Mac SE motherboard I have saved from back i
 
 ![A picture of it in action of my NEC LCD1450NX](resources/screenshot.jpg)
 
-![The whole setup](resources/whole setup.jpg)
+![The whole setup](resources/whole_setup.jpg)
 
 ## Hardware Requirements
 * A Raspberry Pi Pico
@@ -47,7 +47,7 @@ The VGA demo board will need to be modified slightly. These directions are with 
 
 * A ground header will need to be soldered on.
 
-![A modified Pimoroni Pico VGA demo board](resources/vga board.jpg)
+![A modified Pimoroni Pico VGA demo board](resources/vga_board.jpg)
 
 ### Software
 
