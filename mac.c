@@ -38,7 +38,6 @@
 #include "pico/sync.h"
 
 #include "videoinput.pio.h"
-#include "dmacpy.h"
 
 
 // trying to capture video output from a Macintosh SE Logic Board and convert to VGA
@@ -95,21 +94,14 @@ int main() {
 
     sleep_ms(1000);
 
-    // setup everything for video capture
-    se_init();
-
-    // setup dma for dmacopy (faster than memcpy)
-    dmacpy_init();
-
     // launch VGA on core1
     multicore_launch_core1(core1_entry);
     sleep_ms(1000);
 
-    // VGA is up, go go go!
-    gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
-
     gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
 
+    // setup everything for video capture
+    se_init();
     se_main();
 
     // should never reach here
