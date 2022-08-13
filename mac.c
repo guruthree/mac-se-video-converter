@@ -75,8 +75,8 @@
 // 188/37.6 = 5 for VGA
 
 #define CLOCK_SPEED 188e6
-#define CLOCK_DIV 12 //(188.0/15.6672)
 
+bool led_status = false;
 #include "se.h"
 #include "vga.h"
 
@@ -90,10 +90,9 @@ int main() {
     // initialise onboard LED for debug flashing
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-    gpio_put(PICO_DEFAULT_LED_PIN, true);
+    gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
 
-    sleep_ms(5000);
-//    printf("hello world\n");
+    sleep_ms(1000);
 
     // setup everything for video capture
     se_init();
@@ -103,13 +102,12 @@ int main() {
 
     // launch VGA on core1
     multicore_launch_core1(core1_entry);
-    sleep_ms(5000);
+    sleep_ms(1000);
 
     // VGA is up, go go go!
     gpio_set_irq_enabled_with_callback(VSYNC_PIN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
-    gpio_put(PICO_DEFAULT_LED_PIN, false); // LED off we're in normal operation
-//    printf("normal operation\n");
+    gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
 
     se_main();
 
