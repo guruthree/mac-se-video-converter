@@ -16,6 +16,11 @@ My use case for this is using an old Mac SE motherboard I have saved from back i
     * [pi3g](https://buyzero.de/products/raspberry-pi-pico-vga-audio-sd-expansion-board?variant=39412666335412)
     * Build your own from [schematics](https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf)
 * A logic level converter
+* A breadboard might be useful
+
+### On the cheap
+
+I did this project to use my VGA demo board, but there's nothing that specifically requires it. This project can be done on the cheap with just the Pico in a bread board, the logical level converter, some resistors, and Dupont wires. I believe it would work something like this one 47 Ω resistor for any one of the R/G/B GPIO pins (e.g. GPIO 4) in the schematic to convert from 3.3 V to around 1 V, with after the resistor tied to the R/G/B pins of the VGA plug. The 47 Ω resistor again from the HSYNC and VSYNC out GPIO pins (16 and 17). The result of the wiring for the logic level conversion and video signal in would be the same, as described below. Combined with an off-brand logic level converter, I'd guess you could build everything for less than 20 USD/GBP.
 
 ## Software Requirements
 * [Pico C SDK](https://github.com/raspberrypi/pico-sdk])
@@ -54,3 +59,35 @@ The VGA demo board will need to be modified slightly. These directions are with 
 If you wire things up as described above, nothing special required! Just copy the `mac.uf2` file to the Pico and that's it!
 
 If you use an alternate pin configuration, pin assignments can be changed at the top of the `se.h` file.
+
+## Trouble shooting
+
+The screen is flickering/tearing, is that normal?
+
+ * Yes there is a mismatch between the 60 Hz refresh rate output from the Mac and the conversion to the 70 Hz refresh rate of the VGA, which can result in flickering/tearing. Unfortunately there's no way around this. The refresh rate mismatch is necessary in order to be able to have the underlying pixel clocks be multiples of each other, needed for the PIO clock to be divisible by the system clock of the Pico.
+
+The colors are inverted! Black is white and white is black!
+
+* Well that's odd, but can be corrected. Edit `lookuptable.h` to swap `0x7FFF` with `0x0000` and then rebuild.
+
+The screen is chopped off to the left and the right.
+
+* Are you sure your monitor is handling the VGA signal properly? You may need to adjust the geometry to center the picture correctly.
+
+* It's possible your Mac's timings are slightly different than my Mac's. The amount of time needed to wait until picture pixel data is received can be changed in the `videoinput.pio` file. See the `pixelskiploop` assembly label. To move the picture to the left change `set y, 31` to a lower number to shift the image left. To shift the image right, copy paste the loop with a new label. To make find adjustments, remove/add `nop [5]` commands to shift left and right respectively by one pixel.
+
+Some pixels are flickering black, maybe in a row or column.
+
+* There is probably a slight signal timing mismatch. In `videoinput.pio` add/remove *single* `nop` commands before the `mov y, osr` before pixel loop. By single, I mean either `nop` on its own or changing `nop [23]` to `nop [22]` or to `nop [24]`.
+
+Some, but not all, rows of pixels are misaligned and off the screen.
+
+* Oh dear. The code did this originally and was very difficult to fix. Try the previous fix.
+
+* Even more oh dear. I believe the underling issue is a timing issue with the horizontal sync matching up with the PIO clock. Maybe. I'm not entirely sure how I fixed this other than by working on the PIO code in `videoinput.pio`. Try fiddling around with the `wait X pin 1` commands that wait for the horizontal sync. Maybe move it to right before the final `jmp x-- hsyncloop`. The perfect combination is out there.
+
+The picture is rolling sideways.
+
+* Oh dear times three. See the previous issue.
+
+
