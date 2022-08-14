@@ -1,7 +1,7 @@
 # mac-se-video-converter
-Convert video from a Mac Plus/SE/Classic to VGA using a Raspberry Pi Pico. (Note: this has only been tested on a Mac SE, but the video signals should be the same.)
+Convert video from a Mac Plus/SE/Classic to VESA compatible VGA signal using a Raspberry Pi Pico. (Note: this has only been tested on a Mac SE, but the video signals should be the same.)
 
-Takes 512x342@60.15 and converts to 1024x768@70.2.
+This is an active adapter that takes 512x342@60.15 and converts to 1024x768@70.2 and should work with any VESA compatible VGA monitor.
 
 My use case for this is using an old Mac SE motherboard I have saved from back in the day. I imagine it could also be useful for if your CRT has died and can't source another, or for direct video capture.
 
