@@ -20,7 +20,13 @@ My use case for this is using an old Mac SE motherboard I have saved from back i
 
 ### On the cheap
 
-I did this project to use my VGA demo board, but there's nothing that specifically requires it. This project can be done on the cheap with just the Pico in a bread board, the logical level converter, some resistors, and Dupont wires. I believe it would work something like this one 47 Ω resistor for any one of the R/G/B GPIO pins (e.g. GPIO 4) in the schematic to convert from 3.3 V to around 1 V, with after the resistor tied to the R/G/B pins of the VGA plug. The 47 Ω resistor again from the HSYNC and VSYNC out GPIO pins (16 and 17). The result of the wiring for the logic level conversion and video signal in would be the same, as described below. Combined with an off-brand logic level converter, I'd guess you could build everything for less than 20 USD/GBP.
+I did this project to use my VGA demo board, but there's nothing that specifically requires it. This project can be done on the cheap with just the Pico in a bread board, the logic level converter, some resistors, and Dupont wires. I believe it would work something like this:
+
+* One 47 Ω resistor for any one of the R/G/B GPIO pins (e.g. GPIO 4) in the schematic to convert from 3.3 V to around 1 V, with after the resistor tied to the R/G/B pins of the VGA plug.
+* The 47 Ω resistor again from the HSYNC and VSYNC out GPIO pins (16 and 17).
+* The rest of the wiring for the logic level conversion and video signal in would be the same, as described below.
+
+Combined with an off-brand logic level converter, I'd guess you could build everything for less than 20 USD/GBP. (**Warning:** I haven't built this, so I don't know for sure if exactly what I've described works, but something similar should according to the VGA demo board schematics the Raspberry Pi Foundation have provided. If you do build it, let me know so I can update this!)
 
 ## Software Requirements
 * [Pico C SDK](https://github.com/raspberrypi/pico-sdk])
