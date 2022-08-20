@@ -1,24 +1,35 @@
 # mac-se-video-converter
-Convert video from a Mac Plus/SE/Classic to VESA compatible VGA signal using a Raspberry Pi Pico. (Note: this has only been tested on a Mac SE, but the video signals should be the same.)
+Convert the video output of a Mac Plus/SE/Classic using a Raspberry Pi Pico to one of:
 
-This is an active adapter that takes 512x342@60.15 and converts to 1024x768@70.2 and should work with any VESA compatible VGA monitor.
+* A VESA compatible VGA signal.
+* Monochrome composite video.
+
+This is an active adapter that digitally reads the Mac's 512x342@60.15 and converts it. The VGA signal is to 1024x768@70.2 which should work with any VESA compatible VGA monitor. Composite video output is PAL 576i format (but should work with NTSC 480i with some currently unwritten code tweaks).
 
 My use case for this is using an old Mac SE motherboard I have saved from back in the day. I imagine it could also be useful for if your CRT has died and can't source another, or for direct video capture.
+
+Note, this has only been tested on a Mac SE, but the video signals should be the same.
 
 ![A picture of it in action of my NEC LCD1450NX](resources/screenshot.jpg)
 
 ![The whole setup](resources/whole_setup.jpg)
 
+TODO: add picture of composite video output.
+
 ## Hardware Requirements
 * A Raspberry Pi Pico
-* A VGA demonstration board
-    * [Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851)
-    * [pi3g](https://buyzero.de/products/raspberry-pi-pico-vga-audio-sd-expansion-board?variant=39412666335412)
-    * Build your own from [schematics](https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf)
 * A logic level converter
 * A breadboard might be useful
 
-### On the cheap
+For VGA output, a Pico VGA demo board or equivalent is needed:
+
+* [Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851)
+* [pi3g](https://buyzero.de/products/raspberry-pi-pico-vga-audio-sd-expansion-board?variant=39412666335412)
+* Build your own from [schematics](https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf)
+
+For composite video output, a resistor digital-to-analog converter, or DAC, is needed. The code is written to use the DAC from the VGA demo board, so the easiest solution for composite video is also a VGA demo board.
+
+### VGA on the cheap
 
 I did this project to use my VGA demo board, but there's nothing that specifically requires it. This project can be done on the cheap with just the Pico in a bread board, the logic level converter, some resistors, and Dupont wires. I believe it would work something like this:
 
@@ -27,6 +38,12 @@ I did this project to use my VGA demo board, but there's nothing that specifical
 * The rest of the wiring for the logic level conversion and video signal in would be the same, as described below.
 
 Combined with an off-brand logic level converter, I'd guess you could build everything for less than 20 USD/GBP. (**Warning:** I haven't built this, so I don't know for sure if exactly what I've described works, but something similar should according to the VGA demo board schematics the Raspberry Pi Foundation have provided. If you do build it, let me know so I can update this!)
+
+### Composite on the cheap
+
+Composite video output requires a simple resistor DAC, like the one used on the VGA board. One can be built using 5 resistors with values of 8.06 kΩ, 4.02 kΩ, 2 kΩ, 1 kΩ, and 499 Ω connected to GPIO 0 through GPIO 4, with the output of all the resistors tied together.
+
+As with VGA on the cheap, the rest of the wiring, etc., would be the same and it could all be built at very low cost.
 
 ## Software Requirements
 * [Pico C SDK](https://github.com/raspberrypi/pico-sdk])
@@ -60,11 +77,25 @@ The VGA demo board will need to be modified slightly. These directions are with 
 
 ![A modified Pimoroni Pico VGA demo board](resources/vga_board.jpg)
 
+### Composite video connection
+
+By default, the code assumes you are using composite video output through the VGA demo board. In which case, connect the composite video signal to the VGA pin 1 (the top right most pin).
+
+TODO: add diagram.
+
 ### Software
 
 If you wire things up as described above, nothing special required! Just copy the `mac.uf2` file to the Pico and that's it!
 
-If you use an alternate pin configuration, pin assignments can be changed at the top of the `se.h` file.
+If you use an alternate video input pin configuration, the pin assignments can be changed at the top of the `se.h` file.
+
+Choice of VGA or composite video output is specified in `mac.c` by setting the define for `OUTPUT_MODE` to 0 or 1 respectively.
+
+If you're using composite video mode, there are several options for it in `composite.h`:
+
+* Choosing between PAL and NTSC outputs (the latter is currently not written) is set using the define for `Timings`.
+* The define `SKIP_MODE` can be set to 0 or 1 to specify half-resolution interlacing or skipping every 5 the line.
+* If a custom resistor DAC is used, `dac.pio` will need to be modified to set the `DIVISIONS_PER_VOLT` define to the equivalent DAC voltage assuming 8-bits were set and the PIO `out` instructions and the `DAC_PIN_COUNT` define changed to reflect the number of pins used by your DAC.
 
 ## Troubleshooting
 

@@ -33,6 +33,11 @@
 // http://www.mac.linux-m68k.org/devel/plushw.php
 // https://nerdhut.de/2016/06/26/macintosh-classic-crt-1/
 
+
+// CHOOSE OUTPUT VIDEO TYPE (uncomment to select)
+#define OUTPUT_MODE 0 // VGA
+//#define OUTPUT_MODE 1 // Composite
+
 //#include <stdio.h>
 #include <string.h>
 
@@ -42,23 +47,32 @@
 #include "hardware/pio.h"
 #include "hardware/dma.h"
 
+#if OUTPUT_MODE == 0
 #include "pico/scanvideo.h"
 #include "pico/scanvideo/composable_scanline.h"
 #include "pico/sync.h"
+#endif
 
 #include "videoinput.pio.h"
-
+#if OUTPUT_MODE == 1
+#include "dac.pio.h"
+#endif
 
 // need an even divisor of the pixel clock for the system clock
 // for both the SE and VGA
 // 188/15.6672 = 12 for the SE
 // 188/37.6 = 5 for VGA
+// 188/11.75 = 16 for Composite Video
 
 #define CLOCK_SPEED 188e6
 
 bool led_status = false;
 #include "se.h"
+#if OUTPUT_MODE == 0
 #include "vga.h"
+#elif OUTPUT_MODE == 1
+#include "composite.h"
+#endif
 
 void core1_entry();
 
@@ -73,6 +87,7 @@ int main() {
     gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
 
     sleep_ms(1000);
+    gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
 
     // launch VGA on core1
     multicore_launch_core1(core1_entry);
@@ -92,8 +107,14 @@ int main() {
 
 // all things VGA
 void core1_entry() {
+
+#if OUTPUT_MODE == 0
     vga_init();
     vga_main();
+#elif OUTPUT_MODE == 0
+    composite_init();
+    composite_main();
+#endif
 
     // should never reach here
     while (1) {

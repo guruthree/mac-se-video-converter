@@ -1,0 +1,69 @@
+/*
+ *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2022 guruthree
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ */
+
+// write out to VGA board DAC
+// based on https://github.com/guruthree/pico-composite-PAL-colour/blob/main/dac.pio
+
+.program dac
+
+.wrap_target
+    out pins, 5
+    out y, 3 // discard the extra bits to keep everything 8 aligned
+.wrap
+
+% c-sdk {
+
+// the VGA board DAC is 0.75 at 31
+#define DIVISIONS_PER_VOLT (255/6.2)
+// this won't get the proper 1 V peak for composite video
+// but it is enough for about half brightness
+
+#define DAC_PIN_COUNT 5
+static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, float divider) {
+    for(uint i=pin_base; i<pin_base+DAC_PIN_COUNT; i++) {
+        pio_gpio_init(pio, i);
+    }
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_base, DAC_PIN_COUNT, true);
+
+    pio_sm_config c = dac_program_get_default_config(offset); // get a default config, this function call is auto-generated
+
+    // change # of bits here if we want to write a 32-bit word and then go through it
+    sm_config_set_out_shift(&c, true, true, 32); // true - shift right, auto pull, # of bits
+
+    sm_config_set_out_pins(&c, pin_base, DAC_PIN_COUNT);
+
+    sm_config_set_clkdiv(&c, divider);
+
+    // join the FIFO buffers to get more DMA throughput?
+    // we use the transmit only so join RX to the TX?
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_clear_fifos(pio, sm);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+%}

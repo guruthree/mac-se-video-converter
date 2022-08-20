@@ -19,6 +19,7 @@ target_compile_definitions(mac PRIVATE
 )
 
 pico_generate_pio_header(mac ${CMAKE_CURRENT_LIST_DIR}/videoinput.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
+pico_generate_pio_header(mac ${CMAKE_CURRENT_LIST_DIR}/dac.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 
 target_link_libraries(mac
     pico_stdlib
