@@ -26,8 +26,8 @@
 
 // code having to do with input from the mac
 
-//#define CLOCK_DIV 12 //(188.0/15.6672)
-#define CLOCK_DIV 2
+//#define SE_CLOCK_DIV 12 //(188.0/15.6672)
+#define SE_CLOCK_DIV 2
 
 // pin assignments
 #define VIDEO_PIN 20 // pin 26, UART1_TX
@@ -46,30 +46,30 @@
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t sebuffer[MAX_LINES][LINEBUFFER_LEN_8];
 
-uint8_t dma_channel;
-PIO pio;
-int pio_sm;
+uint8_t se_dma_channel;
+PIO se_pio;
+int se_pio_sm;
 
 // the pio program waits for vsync, after which it expects the number of lines and pixels
 // so use the GPIO interrupt to send that data gain
 // at that point the PIO is about to start writing data so set the DMA channel ready to copy to the buffer
 // this is also called for hsync to keep the sub clock divisions aligned with what the mac is actually doing
 void __isr __time_critical_func(gpio_callback)(uint gpio, uint32_t events) {
-    pio_sm_clkdiv_restart(pio, pio_sm); // so that we sample the pixels at the same time in each row
+    pio_sm_clkdiv_restart(se_pio, se_pio_sm); // so that we sample the pixels at the same time in each row
     if (gpio == VSYNC_PIN) {
-        if (dma_channel_is_busy(dma_channel)) {
+        if (dma_channel_is_busy(se_dma_channel)) {
             // if this is flashing something has gone wrong
             gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
             // we need to be ready to copy the new data
-            dma_channel_abort(dma_channel);
+            dma_channel_abort(se_dma_channel);
             // clear fifos because if the channel is interrupted there will be old pixel data left
-            pio_sm_clear_fifos(pio, pio_sm);
+            pio_sm_clear_fifos(se_pio, se_pio_sm);
         }
 
         // send how many pixels and lines to read to the PIO program
         // (this appears to be the only way to set a value of more than 5 bits?)
-        pio_sm_put(pio, pio_sm, (LINEBUFFER_LEN_8*8 - 1) << 16 | (MAX_LINES - 1));
-        dma_channel_set_write_addr(dma_channel, sebuffer, true);
+        pio_sm_put(se_pio, se_pio_sm, (LINEBUFFER_LEN_8*8 - 1) << 16 | (MAX_LINES - 1));
+        dma_channel_set_write_addr(se_dma_channel, sebuffer, true);
     }
 }
 
@@ -80,27 +80,27 @@ void se_init() {
     gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
 
     // setup and init the PIO
-    pio = pio1;
-    pio_sm = 0;
-    int pio_offset = pio_add_program(pio, &videoinput_program);
-    videoinput_program_init(pio, pio_sm, pio_offset, VIDEO_PIN, CLOCK_DIV);
+    se_pio = pio1;
+    se_pio_sm = 0;
+    int pio_offset = pio_add_program(se_pio, &videoinput_program);
+    videoinput_program_init(se_pio, se_pio_sm, pio_offset, VIDEO_PIN, SE_CLOCK_DIV);
 
     // setup DMA
-//    dma_channel = dma_claim_unused_channel(true);
-    dma_channel = 6;
-    dma_channel_claim(dma_channel);
-    dma_channel_config channel_config = dma_channel_get_default_config(dma_channel);
+//    se_dma_channel = dma_claim_unused_channel(true);
+    se_dma_channel = 6;
+    dma_channel_claim(se_dma_channel);
+    dma_channel_config channel_config = dma_channel_get_default_config(se_dma_channel);
 
     channel_config_set_transfer_data_size(&channel_config, DMA_SIZE_32); // read 32 bits at a time
     channel_config_set_read_increment(&channel_config, false); // always read from the same place
     channel_config_set_write_increment(&channel_config, true); // go down the buffer writing
-    channel_config_set_dreq(&channel_config, pio_get_dreq(pio, pio_sm, false));
+    channel_config_set_dreq(&channel_config, pio_get_dreq(se_pio, se_pio_sm, false));
     channel_config_set_ring(&channel_config, true, 0); // disable wrapping
 
-    dma_channel_configure(dma_channel,
+    dma_channel_configure(se_dma_channel,
                           &channel_config,
                           &sebuffer, // write address
-                          &pio->rxf[pio_sm], // read address
+                          &se_pio->rxf[se_pio_sm], // read address
                           BUFFER_LEN_32, // number of data transfers to do
                           false // start immediately
     );
