@@ -26,6 +26,12 @@
 
 // code having to do with input from the mac
 
+// the SE's video output:
+// 15.6672 MHz pixel clock
+// 0.045 ms (vs 0.0449438202 ms) per horizontal line? (22.22 KHz vs 22.25 KHz?)
+// 22250/15.6672 = 1420 samples across?
+// need to translate 512x342 resolution
+
 //#define SE_CLOCK_DIV 12 //(188.0/15.6672)
 #define SE_CLOCK_DIV 2
 

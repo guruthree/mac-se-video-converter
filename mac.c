@@ -24,6 +24,15 @@
  *
  */
 
+// trying to capture video output from a Macintosh SE Logic Board and convert to VGA
+// or convert to monochrome composite video
+
+// some related information
+// http://www.waveguide.se/?article=compact-mac-video-adapter
+// https://tinkerdifferent.com/threads/warpse-25-mhz-68hc000-based-accelerator-for-mac-se.253/page-11#post-10080
+// http://www.mac.linux-m68k.org/devel/plushw.php
+// https://nerdhut.de/2016/06/26/macintosh-classic-crt-1/
+
 //#include <stdio.h>
 #include <string.h>
 
@@ -38,36 +47,6 @@
 #include "pico/sync.h"
 
 #include "videoinput.pio.h"
-
-
-// trying to capture video output from a Macintosh SE Logic Board and convert to VGA
-// http://www.waveguide.se/?article=compact-mac-video-adapter
-// https://tinkerdifferent.com/threads/warpse-25-mhz-68hc000-based-accelerator-for-mac-se.253/page-11#post-10080
-// http://www.mac.linux-m68k.org/devel/plushw.php
-// https://nerdhut.de/2016/06/26/macintosh-classic-crt-1/
-
-// the SE's video output:
-// 15.6672 MHz pixel clock
-// 0.045 ms (vs 0.0449438202 ms) per horizontal line? (22.22 KHz vs 22.25 KHz?)
-// 22250/15.6672 = 1420 samples across?
-// need to translate 512x342 resolution
-
-// VGA output using
-// https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851
-// with scanvideo_dpi library
-// https://github.com/raspberrypi/pico-extras/tree/master/src/common/pico_scanvideo
-// useful forum thread about using said library
-// https://forums.raspberrypi.com/viewtopic.php?t=305712
-// VGA timings
-// http://tinyvga.com/vga-timing
-
-// VGA mode 1024x768@70 has a nominal pixel clock of 75 MHz, 188/75 = 2.50666 clock divs
-// VGA 1024x768 range for (most?) monitors is 60-75 Hz
-// so if we adjust the pixel clock to an even divisor of 188, we get 75.2 MHz
-// this works out to 1024x768@70.2
-// this falls into the range that at least my NEC LCD1450NX can sync to
-// BUT, scanvideo can't do a half divsor, so halve the pixel clock
-// gives a resolution of 512x768, which we can make 512x384 - PERFECT
 
 
 // need an even divisor of the pixel clock for the system clock

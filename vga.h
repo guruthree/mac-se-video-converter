@@ -24,20 +24,37 @@
  *
  */
 
-// code for displaying on VGA
-// loosely based on pico-playground/scanvideo/test_pattern/test_pattern.c
+// code for displaying on VGA, loosely based on
+// https://github.com/raspberrypi/pico-playground/blob/master/scanvideo/test_pattern/test_pattern.c
+
+// VGA output using VGA demo board
+// https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base?variant=32369520672851
+// with scanvideo_dpi library
+// https://github.com/raspberrypi/pico-extras/tree/master/src/common/pico_scanvideo
+// useful forum thread about using said library
+// https://forums.raspberrypi.com/viewtopic.php?t=305712
+
+// VGA mode 1024x768@70 has a nominal pixel clock of 75 MHz, 188/75 = 2.50666 clock divs
+// VGA 1024x768 range for (most?) monitors is 60-75 Hz
+// so if we adjust the pixel clock to an even divisor of 188, we get 75.2 MHz
+// this works out to 1024x768@70.2
+// this falls into the range that at least my NEC LCD1450NX can sync to
+// BUT, scanvideo can't do a half divsor, so halve the pixel clock
+// gives a resolution of 512x768, which we can make 512x384 - PERFECT
 
 #include "lookuptable.h"
 #define white 0x7FFF
 #define black 0x0000
 
+// number of VGA lines to skip to adjust vertical position of mac video picture
 #define VERTICAL_OFFSET 21
 
+// VGA timings
 // http://tinyvga.com/vga-timing/1024x768@70Hz
 // based on pico_scanvideo/vga_modes.c
 const scanvideo_timing_t vga_timing_1024x768_70_default = {
 //    .clock_freq = 75000000, // 150 MHz Sysclock
-    .clock_freq = 37600000, // 180 MHz with pixel doubling
+    .clock_freq = 37600000, // 188 MHz with pixel doubling
 
     .h_active = 1024/2, // the divisions by two are for the pixel doubling
     .v_active = 768,
