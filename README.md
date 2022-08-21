@@ -4,17 +4,27 @@ Convert the video output of a Mac Plus/SE/Classic using a Raspberry Pi Pico to o
 * A VESA compatible VGA signal.
 * Monochrome composite video.
 
-This is an active adapter that digitally reads the Mac's 512x342@60.15 and converts it. The VGA signal is to 1024x768@70.2 which should work with any VESA compatible VGA monitor. Composite video output is PAL 576i format (but should work with NTSC 480i with some currently unwritten code tweaks).
+This is an active adapter that digitally reads the Mac's 512x342@60.15 and converts it. The VGA signal is to 1024x768@70.2 which should work with any VESA compatible VGA monitor. Composite video output is PAL 288p@50/576i@50 format. (Composite video should work with NTSC 480i@60 with some currently unwritten code tweaks.)
 
 My use case for this is using an old Mac SE motherboard I have saved from back in the day. I imagine it could also be useful for if your CRT has died and can't source another, or for direct video capture.
 
 Note, this has only been tested on a Mac SE, but the video signals should be the same.
 
+### Screenshots/Pictures
+
+The VGA picture on an LCD:
+
 ![A picture of it in action of my NEC LCD1450NX](resources/screenshot.jpg)
+
+Wired up for VGA:
 
 ![The whole setup](resources/whole_setup.jpg)
 
-TODO: add picture of composite video output.
+Composite video on my PVM:
+
+![Composite video output](resources/composite.jpg)
+
+(To avoid being a flicery mess, instead of interlacing every 5th line is skipped.)
 
 ## Hardware Requirements
 * A Raspberry Pi Pico
@@ -79,9 +89,9 @@ The VGA demo board will need to be modified slightly. These directions are with 
 
 ### Composite video connection
 
-By default, the code assumes you are using composite video output through the VGA demo board. In which case, connect the composite video signal to the VGA pin 1 (the top right most pin).
+By default, the code assumes you are using composite video output through the VGA demo board. In which case, connect the composite video signal to the VGA pin 1 (the top right most pin). A ground connection can be made on pin 6 (the right most pin on the middle row).
 
-TODO: add diagram.
+![Composite out of the VGA demo board](resources/compositedemoboard.jpg)
 
 ### Software
 
@@ -93,8 +103,8 @@ Choice of VGA or composite video output is specified in `mac.c` by setting the d
 
 If you're using composite video mode, there are several options for it in `composite.h`:
 
-* Choosing between PAL and NTSC outputs (the latter is currently not written) is set using the define for `Timings`.
-* The define `SKIP_MODE` can be set to 0 or 1 to specify half-resolution interlacing or skipping every 5 the line.
+* Choosing between PAL and NTSC outputs (the latter is currently not written, PRs welcome) is set using the define for `Timings`.
+* The define `CONVERSION_MODE` can be set to 0 or 1 to specify half-resolution interlacing or skipping every 5 the line. Default is skipping lines as interlacing is a flickery mess.
 * If a custom resistor DAC is used, `dac.pio` will need to be modified to set the `DIVISIONS_PER_VOLT` define to the equivalent DAC voltage assuming 8-bits were set and the PIO `out` instructions and the `DAC_PIN_COUNT` define changed to reflect the number of pins used by your DAC.
 
 ## Troubleshooting
@@ -131,4 +141,7 @@ The picture is rolling sideways.
 
 * Oh dear times three. See the previous issue.
 
+The composite video picture doesn't look good.
+
+* Yes.
 
