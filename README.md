@@ -24,7 +24,7 @@ Composite video on my PVM:
 
 ![Composite video output](resources/composite.jpg)
 
-(To avoid being a flicery mess, instead of interlacing every 5th line is skipped.)
+(To avoid being a flickery mess, instead of interlacing progressive scan is used with every 5th line skipped.)
 
 ## Hardware Requirements
 * A Raspberry Pi Pico
