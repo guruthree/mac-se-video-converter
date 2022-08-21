@@ -111,7 +111,7 @@ void core1_entry() {
 #if OUTPUT_MODE == 0
     vga_init();
     vga_main();
-#elif OUTPUT_MODE == 0
+#elif OUTPUT_MODE == 1
     composite_init();
     composite_main();
 #endif
