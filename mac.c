@@ -62,7 +62,7 @@
 // for both the SE and VGA
 // 188/15.6672 = 12 for the SE
 // 188/37.6 = 5 for VGA
-// 188/11.75 = 16 for Composite Video
+// 188/10.44 = 18 for Composite Video
 
 #define CLOCK_SPEED 188e6
 

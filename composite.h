@@ -25,13 +25,18 @@
  */
 
 #include <stdlib.h>
+#include <math.h>
 
 // code for displaying as composite video
 // this will probably be a bit blurry
 // based on https://github.com/guruthree/pico-composite-PAL-colour
 
-// this should give around 752 'pixels' across with a 188 MHz system clock
-#define CV_CLOCK_DIV 8
+// CHOOSE CONVERSION TYPE (uncomment to select)
+//#define CONVERSION_MODE 0 // interlaced (causes flickering)
+#define CONVERSION_MODE 1 // skip every 5th line
+
+// this should give around 558 'pixels' across with a 188 MHz system clock, 542 visible
+#define CV_CLOCK_DIV 9
 #define DAC_FREQ (CLOCK_SPEED / (2*CV_CLOCK_DIV)) // 2* because dac PIO program is 2 cycles
 
 // timings information http://www.batsocks.co.uk/readme/video_timing.htm
@@ -66,7 +71,9 @@ const TimingsStruct NTSCTimings = {
     .numlines = 525 // changed
 };
 
-// currently line numbers are hard coded for PAL...
+// set to NTSCTimings for NTSC
+// but line numbers are currently  hard coded for PAL...
+// SO THIS WON'T WORK RIGHT NOW!!!
 #define Timings PalTimings
 
 // voltages
@@ -149,7 +156,7 @@ inline void shortpulse(uint8_t* currentbuffer) {
 }
 
 inline void copyfromsebuffer(int16_t myline, uint8_t* currentbuffer) {
-    uint8_t* p = currentbuffer + SAMPLES_FRONT_PORCH + SAMPLES_BACK_PORCH*2;
+    uint8_t* p = currentbuffer + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (uint16_t)(1.8 * DAC_FREQ / 1e6);
     for (uint16_t c = 0; c < LINEBUFFER_LEN_8; c++) {
         for (uint8_t d = 0; d < 8; d++) {
             if (sebuffer[myline][c] & (1 << d))
@@ -175,6 +182,10 @@ void composite_main() {
         }
         memset(currentbuffer, LEVEL_BLANK, SAMPLES_PER_LINE);
 
+        // TODO: somehow make this work for NTSC too
+        // video line specs:
+        // http://www.batsocks.co.uk/readme/video_timing.htm
+        // https://pe2bz.philpem.me.uk/Misc/-%20Video/NTSC-PAL-etc-Formats/pal_ntsc.html
         switch (currentline) {
             // double gap lines
             case 1 ... 2:
@@ -207,10 +218,21 @@ void composite_main() {
             // first half of interlacing
             case 24 ... 310:
                 hsync(currentbuffer);
-                myline = currentline - 24 - 50;
+                myline = currentline - 24;
+#if CONVERSION_MODE == 0
+                myline -= 50;
                 if (myline >= 0 && myline < MAX_LINES/2) {
                     copyfromsebuffer(myline*2, currentbuffer);
                 }
+#elif CONVERSION_MODE == 1
+                myline -= 8;
+                if (myline >= 0) {
+                    myline = myline + floor((4*myline-1)/16);
+                    if (myline < MAX_LINES) {
+                        copyfromsebuffer(myline, currentbuffer);
+                    }
+                }
+#endif
                 break;
 
             // half short pulse, half gap
@@ -227,10 +249,21 @@ void composite_main() {
             // second half of interlacing
             case 336 ... 622:
                 hsync(currentbuffer);
-                myline = currentline - 336 - 51;
+                myline = currentline - 336;
+#if CONVERSION_MODE == 0
+                myline -= 51;
                 if (myline >= 0 && myline < MAX_LINES/2) {
                     copyfromsebuffer(myline*2+1, currentbuffer);
                 }
+#elif CONVERSION_MODE == 1 // shouldn't get here?
+                myline -= 9;
+                if (myline >= 0) {
+                    myline = myline + floor((4*myline-1)/16);
+                    if (myline < MAX_LINES) {
+                        copyfromsebuffer(myline, currentbuffer);
+                    }
+                }
+#endif
                 break;
 
             // hsync and half short pulse
@@ -245,7 +278,11 @@ void composite_main() {
         }
 
         currentline++;
+#if CONVERSION_MODE == 0
         if (currentline > Timings.numlines) {
+#elif CONVERSION_MODE == 1
+        if (currentline > Timings.numlines/2) {
+#endif
             currentline = 1;
             gpio_put(PICO_DEFAULT_LED_PIN, led_status = !led_status);
         }
