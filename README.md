@@ -24,7 +24,7 @@ Composite video on my PVM:
 
 ![Composite video output](resources/composite.jpg)
 
-(To avoid being a flickery mess, instead of interlacing progressive scan is used with every 5th line skipped.)
+(Instead of interlacing, progressive scan is used to avoid being a flickery mess. Every 5th line skipped.)
 
 ## Hardware Requirements
 * A Raspberry Pi Pico
@@ -145,3 +145,19 @@ The composite video picture doesn't look good.
 
 * Yes.
 
+### Tested Macs
+
+* Macintosh SE FDHD
+
+### Tested screens
+
+These screens have been reported to work/not work. Please submit PRs/issues if you have tested other screens so that this list can be updated.
+
+| Brand     | Model          | Works? | Notes                         |
+|-----------|----------------|--------|-------------------------------|
+| AOC       |                | YES    |                               |
+| CTX       | 1565D          | YES    | CRT                           |
+| Lenovo    | T24h-20        | YES    | (via HDMI adapter)            |
+| NEC       | LCD1450NX      | YES    |                               |
+| Sony      | KDL-37S5500    | NO     | TV, neither VGA nor HDMI      |
+| Sony      | PVM-9220ME     | YES    | Composite video               |
