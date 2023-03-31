@@ -121,9 +121,9 @@ The screen is chopped off to the left and the right.
 
 * Are you sure your monitor is handling the VGA signal properly? You may need to adjust the geometry to center the picture correctly.
 
-* It's possible your Mac's timings are slightly different than my Mac's. The amount of time needed to wait until picture pixel data is received can be changed in the `videoinput.pio` file. See the `pixelskiploop` assembly label. To move the picture to the left change `set y, 31` to a lower number to shift the image left. To shift the image right, copy paste the loop with a new label. To make find adjustments, remove/add `nop [5]` commands to shift left and right respectively by one pixel.
+* It's possible your Mac's timings are slightly different than my Mac's. The amount of time needed to wait until picture pixel data is received can be changed in the `videoinput.pio` file. See the `pixelskiploop` assembly label. To move the picture to the left change `set y, 31` to a lower number to shift the image left. To shift the image right, copy paste the loop with a new label. To make fine adjustments, remove/add `nop [5]` commands to shift left and right respectively by one pixel.
 
-Some rows of pixel look like they're flickering side to side by a pixel or two.
+Some rows of pixels look like they're flickering side to side by a pixel or two.
 
 * I observed this after running the full MacBench 2.0 test suite to test out my Radius Accelerator 25. I have no idea what could be the underlying issue, maybe some cycles got skipped or missed due to CPU load? A reset of my Mac SE fixed the issue.
 
