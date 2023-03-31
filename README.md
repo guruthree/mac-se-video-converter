@@ -115,7 +115,7 @@ The screen is flickering/tearing, is that normal?
 
 The colors are inverted! Black is white and white is black!
 
-* Well that's odd, but can be corrected. Edit `lookuptable.h` to swap `0x7FFF` with `0x0000` and then rebuild.
+* Well that's odd, but can be corrected. Edit `lookuptable.h` to swap the assigned `BLACK` and `WHITE` defines (`0x7FFF` and `0x0000`) and then rebuild.
 
 The screen is chopped off to the left and the right.
 
