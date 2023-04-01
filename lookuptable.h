@@ -1,6 +1,3 @@
-#define BLACK 0x0000
-#define WHITE 0x7FFF
-
 uint16_t lookuptable[256][8] = {
     {WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE},
     {BLACK, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE},

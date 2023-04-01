@@ -42,9 +42,9 @@
 // BUT, scanvideo can't do a half divsor, so halve the pixel clock
 // gives a resolution of 512x768, which we can make 512x384 - PERFECT
 
+#define WHITE 0x7FFF
+#define BLACK 0x0000
 #include "lookuptable.h"
-#define white 0x7FFF
-#define black 0x0000
 
 // number of VGA lines to skip to adjust vertical position of mac video picture
 #define VERTICAL_OFFSET 21
@@ -94,10 +94,10 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
     if (line_num < 0 || line_num >= MAX_LINES) {
         // outside where the mac has data, just draw a black line
         *p++ = COMPOSABLE_COLOR_RUN;
-        *p++ = black;
+        *p++ = BLACK;
         *p++ = vga_mode.width - 2;
         *p++ = COMPOSABLE_RAW_1P;
-        *p++ = black; // the required last black pixel
+        *p++ = BLACK; // the required last black pixel
         // composable + black + num + 1p + black = 5
         // end of line with alignment padding
         *p++ = COMPOSABLE_EOL_ALIGN; // after odd # of tokens
@@ -109,9 +109,9 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
 
         // first bit is special
         if (sebuffer[line_num][0] & 1)
-            *p++ = black;
+            *p++ = BLACK;
         else
-            *p++ = white;
+            *p++ = WHITE;
         *p++ = vga_mode.width - 2;
 
         // the next 7 bits
@@ -126,7 +126,7 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
             }
         }
 
-        *p++ = black; // off the screen? the required last black pixel
+        *p++ = BLACK; // off the screen? the required last black pixel
         // composible + 1 pixel + num across + 7 pixels + 63*8 pixels + 1 black = 515
         // end of line with alignment padding
         *p++ = COMPOSABLE_EOL_ALIGN; // after odd # of tokens
