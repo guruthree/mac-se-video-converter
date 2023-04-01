@@ -38,6 +38,9 @@
 #define OUTPUT_MODE 0 // VGA
 //#define OUTPUT_MODE 1 // Composite
 
+// if the video signal coming from the mac is inverted for some reason, change to 1
+#define INVERTED_SIGNAL 0
+
 //#include <stdio.h>
 #include <string.h>
 

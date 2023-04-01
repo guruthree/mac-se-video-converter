@@ -108,21 +108,36 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
         *p++ = COMPOSABLE_RAW_RUN;
 
         // first bit is special
+#if INVERTED_SIGNAL == 0
         if (sebuffer[line_num][0] & 1)
+#elif INVERTED_SIGNAL == 1
+        if (!(sebuffer[line_num][0] & 1))
+#endif
             *p++ = BLACK;
         else
             *p++ = WHITE;
+
+
+
         *p++ = vga_mode.width - 2;
 
         // the next 7 bits
         for (uint16_t d = 1; d < 8; d++) {
+#if INVERTED_SIGNAL == 0
             *p++ = lookuptable[sebuffer[line_num][0]][d];
+#elif INVERTED_SIGNAL == 1
+            *p++ = lookuptable[~sebuffer[line_num][0]][d];
+#endif
         }
 
         // the last 504 bits are all done the same
         for (uint16_t c = 1; c < MIN(vga_mode.width/8, LINEBUFFER_LEN_8); c++) {
             for (uint16_t d = 0; d < 8; d++) {
+#if INVERTED_SIGNAL == 0
                 *p++ = lookuptable[sebuffer[line_num][c]][d];
+#elif INVERTED_SIGNAL == 1
+                *p++ = lookuptable[~sebuffer[line_num][c]][d];
+#endif
             }
         }
 
