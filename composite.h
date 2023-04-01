@@ -159,7 +159,11 @@ inline void copyfromsebuffer(int16_t myline, uint8_t* currentbuffer) {
     uint8_t* p = currentbuffer + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (uint16_t)(1.8 * DAC_FREQ / 1e6);
     for (uint16_t c = 0; c < LINEBUFFER_LEN_8; c++) {
         for (uint8_t d = 0; d < 8; d++) {
+#if INVERTED_SIGNAL == 0
             if (sebuffer[myline][c] & (1 << d))
+#elif INVERTED_SIGNAL == 1
+            if (!(sebuffer[myline][c] & (1 << d)))
+#endif
                 *p++ = LEVEL_BLANK; // black
             else
                 *p++ = LEVEL_WHITE;
