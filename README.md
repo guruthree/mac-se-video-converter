@@ -10,7 +10,11 @@ My use case for this is using an old Mac SE motherboard I have saved from back i
 
 Note, this has only been tested on a Mac SE, but the video signals should be the same.
 
-### Screenshots/Pictures
+### Screenshots/Pictures/Videos
+
+A YouTube video describing how it works:
+
+[![Bringing a Mac SE back to life with a Raspberry Pi Pico #Marchintosh 2023](resources/youtube-thumb.jpg)](https://youtu.be/mNs1JePWvmg)
 
 The VGA picture on an LCD:
 
