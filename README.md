@@ -59,6 +59,8 @@ As with VGA on the cheap, the rest of the wiring, etc., would be the same and it
 * [Pico C SDK](https://github.com/raspberrypi/pico-sdk])
 * [Pico Extras](https://github.com/raspberrypi/pico-extras)
 
+When compiling you'll need to make sure `pico_sdk_import.cmake` and `pico_extras_import.cmake` are in the root of the repository. After creating `build` and `generated` folders, `cd build && cmake .. && make` as usual.
+
 ## Usage
 
 ### Wiring
@@ -155,7 +157,7 @@ These screens have been reported to work/not work. Please submit PRs/issues if y
 
 | Brand     | Model          | Works? | Notes                         |
 |-----------|----------------|--------|-------------------------------|
-| AOC       |                | YES    |                               |
+| AOC       | 2250W          | YES    |                               |
 | CTX       | 1565D          | YES    | CRT                           |
 | Lenovo    | T24h-20        | YES    | (via HDMI adapter)            |
 | NEC       | LCD1450NX      | YES    |                               |
