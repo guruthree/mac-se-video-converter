@@ -174,3 +174,4 @@ These screens have been reported to work/not work. Please submit PRs/issues if y
 
 * [PicoATX power supply for compact Macs](https://github.com/dekuNukem/PicoRC)
 * [Classic Mac to DVI with Pico PIO](https://twitter.com/robingrosset/status/1401535750588485632)
+* [SE-VGA](https://github.com/techav-homebrew/SE-VGA)
