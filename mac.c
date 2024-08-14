@@ -49,6 +49,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/dma.h"
+#include "hardware/clocks.h" // needed as of SDK 2.0.0
 
 #if OUTPUT_MODE == 0
 #include "pico/scanvideo.h"
