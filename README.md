@@ -75,6 +75,8 @@ The wiring should look like this:
 
 ![Wiring overview](resources/wiring.png)
 
+(Note VSYS is Pico pin 39, +3.3V is Pico pin 36, GPIO20 is Pico pin 26, GPIO21 is Pico pin 27, and GPIO22 is Pico pin 29.)
+
 I have made a power/data harness from an old ATX power supply 20-pin cable and old motherboard ATX 20-pin connector. This rewires an older ATX power supply to provide the Mac SE motherboard with power and also break out the needed pins for video.
 
 **Important:** It seems that there may be a few variations of the logic board connector, please make sure you have the correct pin out for your board!!!
@@ -119,7 +121,7 @@ The screen is flickering/tearing, is that normal?
 
  * Yes there is a mismatch between the 60 Hz refresh rate output from the Mac and the conversion to the 70 Hz refresh rate of the VGA, which can result in flickering/tearing. Unfortunately there's no way around this. The refresh rate mismatch is necessary in order to be able to have the underlying pixel clocks be multiples of each other, needed for the PIO clock to be divisible by the system clock of the Pico.
 
-The colors are inverted! Black is white and white is black!
+The colours are inverted! Black is white and white is black!
 
 * Well that's odd, but can be corrected. Edit `mac.c` to change the define for `INVERTED_SIGNAL` to 1 and then rebuild.
 
@@ -151,10 +153,25 @@ The composite video picture doesn't look good.
 
 * Yes.
 
+I have no picture.
+
+* Does your monitor detect a signal? If not, please check the connection or try a different monitor.
+
+* Is the Pico's on board LED flashing? This should be not too fast and not too slow - about 30 hz. If you have flashing than the Pico is reading the VSYNC signal and at least your Mac is working. It's still possible however that the HSYNC or VIDEO signals aren't being read properly, e.g., due to a too low voltage or timing issues. The RP2040 is [maybe a little bit 5 V GPIO input tolerant](https://hackaday.com/2023/04/05/rp2040-and-5v-logic-best-friends-this-fx9000p-confirms/), so you might test without any logic level shifting, BUT DO THIS AT YOUR OWN RISK! YOU COULD DAMAGE SOMETHING! For timing issues check some of the recommendations above for adjusting them.
+
+* If the pico isn't doing anything at all, double-check you have flashed it correctly. It's possible the VSYNC signal (and others) aren't being read properly. Check your wiring, the logic level converter, etc. Check the signal voltages on a oscilloscope if you can.
+
+* Does your Mac chime? If there's no chime there's probably no video signal to display.
+
+The picture is slightly yellow (or some other amount of not white).
+
+* Good news, you can change the definition of white! You can change what colour represents white pixels at `#define WHITE 0x7FFF` at the top of `vga.h`. Go crazy. Make it amber (0x2FF). Make it green (0x3E0). The format is BGR555 in a 16 bit unsigned integer, so shift 5 bits of blue 11 bits, 5 bits of green shifted 6 bits, and 5 bits of red unshifted. Or use the `PICO_SCANVIDEO_PIXEL_FROM_RGB8(R,G,B)` helper function.
+
 ### Tested Macs
 
 * Macintosh SE FDHD
 * [Macintosh 128k/512k via Robin Grosset](https://twitter.com/robingrosset/status/1645179479231197185)
+* [Macintosh Plus Clone via DosFox](https://tech.lgbt/@DosFox/112956255219578599)
 
 ### Tested screens
 
@@ -175,3 +192,4 @@ These screens have been reported to work/not work. Please submit PRs/issues if y
 * [PicoATX power supply for compact Macs](https://github.com/dekuNukem/PicoRC)
 * [Classic Mac to DVI with Pico PIO](https://twitter.com/robingrosset/status/1401535750588485632)
 * [SE-VGA](https://github.com/techav-homebrew/SE-VGA)
+* [Compact Mac video adapter](https://www.waveguide.se/?article=compact-mac-video-adapter)
