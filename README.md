@@ -136,6 +136,7 @@ Some rows of pixels look like they're flickering side to side by a pixel or two.
 * I observed this after running the full MacBench 2.0 test suite to test out my Radius Accelerator 25. I have no idea what could be the underlying issue, maybe some cycles got skipped or missed due to CPU load? A reset of my Mac SE fixed the issue.
 
 Some pixels are flickering black, maybe in a row or column.
+It might also look like noise (e.g., [#5](https://github.com/guruthree/mac-se-video-converter/issues/5)).
 
 * There is probably a slight signal timing mismatch. In `videoinput.pio` add/remove *single* `nop` commands before the `mov y, osr` before pixel loop. By single, I mean either `nop` on its own or changing `nop [23]` to `nop [22]` or to `nop [24]`.
 
@@ -165,13 +166,14 @@ I have no picture.
 
 The picture is slightly yellow (or some other amount of not white).
 
-* Good news, you can change the definition of white! You can change what colour represents white pixels at `#define WHITE 0x7FFF` at the top of `vga.h`. Go crazy. Make it amber (0x2FF). Make it green (0x3E0). The format is BGR555 in a 16 bit unsigned integer, so shift 5 bits of blue 11 bits, 5 bits of green shifted 6 bits, and 5 bits of red unshifted. Or use the `PICO_SCANVIDEO_PIXEL_FROM_RGB8(R,G,B)` helper function.
+* Good news, you can change the definition of white! If you are using a full colour VGA implementation you can change what colour represents white pixels at `#define WHITE 0x7FFF` at the top of `vga.h`. Try `0xFFFE` (via [DosFox and hkz](https://tech.lgbt/@DosFox)) or try `0xFFDF` for a whiter picture. But why stop there? Go crazy. Make it amber `0x5DF`? Make it green `0x7C0`? The format is BGR555 in a 16 bit unsigned integer, so shift 5 bits of blue 11 bits, 5 bits of green shifted 6 bits, and 5 bits of red unshifted (as defined [here](https://github.com/raspberrypi/pico-extras/blob/2267457e2611b51553753800e1102ac18ae25dac/src/rp2_common/pico_scanvideo_dpi/include/pico/scanvideo.h#L24C1-L34C44)). Or use the `PICO_SCANVIDEO_PIXEL_FROM_RGB8(R,G,B)` helper function.
 
 ### Tested Macs
 
 * Macintosh SE FDHD
 * [Macintosh 128k/512k via Robin Grosset](https://twitter.com/robingrosset/status/1645179479231197185)
-* [Macintosh Plus Clone via DosFox](https://tech.lgbt/@DosFox/112956255219578599)
+* [Macintosh Plus Clone via DosFox](https://tech.lgbt/@DosFox/112956255219578599) (without logic level converter)
+* [Macintosh Plus via @TimRustige](https://github.com/guruthree/mac-se-video-converter/issues/5) - required adjusting `nop [23]` to `nop [22]`.
 
 ### Tested screens
 
@@ -186,6 +188,9 @@ These screens have been reported to work/not work. Please submit PRs/issues if y
 | NEC       | LCD1450NX      | YES    |                               |
 | Sony      | KDL-37S5500    | NO     | TV, neither VGA nor HDMI      |
 | Sony      | PVM-9220ME     | YES    | Composite video               |
+| Dell      | ???            | YES    | via DosFox                    |
+| LG        | ???            | YES    | via @TimRustige               |
+| Eizo      | L367           | YES    | via @TimRustige               |
 
 ## Other similar projects
 
