@@ -126,18 +126,18 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
 #if INVERTED_SIGNAL == 0
             *p++ = lookuptable[sebuffer[line_num][0]][d];
 #elif INVERTED_SIGNAL == 1
-            *p++ = lookuptable[~sebuffer[line_num][0]][d];
+            *p++ = lookuptable[(uint8_t)(~sebuffer[line_num][0])][d];
 #endif
         }
 
         // the last 504 bits are all done the same
         for (uint16_t c = 1; c < MIN(vga_mode.width/8, LINEBUFFER_LEN_8); c++) {
-            for (uint16_t d = 0; d < 8; d++) {
-#if INVERTED_SIGNAL == 0
-                *p++ = lookuptable[sebuffer[line_num][c]][d];
-#elif INVERTED_SIGNAL == 1
-                *p++ = lookuptable[~sebuffer[line_num][c]][d];
+            uint8_t idx = sebuffer[line_num][c];
+#if INVERTED_SIGNAL == 1
+            idx = ~idx;
 #endif
+            for (uint16_t d = 0; d < 8; d++) {
+                *p++ = lookuptable[idx][d];
             }
         }
 
