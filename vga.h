@@ -49,12 +49,11 @@
 #define BLACK 0x0000
 #include "lookuptable.h"
 
-// number of VGA lines to skip to adjust vertical position of mac video picture
-#define VERTICAL_OFFSET 21
 
 // VGA timings
-// http://tinyvga.com/vga-timing/1024x768@70Hz
 // based on pico_scanvideo/vga_modes.c
+
+// http://tinyvga.com/vga-timing/1024x768@70Hz
 const scanvideo_timing_t vga_timing_1024x768_70_default = {
 //    .clock_freq = 75000000, // 150 MHz Sysclock
     .clock_freq = 37600000, // 188 MHz with pixel doubling
@@ -87,7 +86,43 @@ const scanvideo_mode_t vga_mode_1024x768_70 = {
     .yscale = 2, // keeps in scale for the doubling
 };
 
+// http://www.tinyvga.com/vga-timing/640x480@60Hz
+const scanvideo_timing_t vga_timing_640x480_56_default = {
+    .clock_freq = 23500000, // 188 MHz with pixel doubling
+
+    .h_active = 640, // the divisions by two are for the pixel doubling
+    .v_active = 480,
+
+    .h_front_porch = 16,
+    .h_pulse = 96,
+    .h_total = 800,
+    .h_sync_polarity = 0,
+
+    .v_front_porch = 10,
+    .v_pulse = 2,
+    .v_total = 510,
+    .v_sync_polarity = 1,
+
+    .enable_clock = 0,
+    .clock_polarity = 0,
+
+    .enable_den = 0
+};
+
+const scanvideo_mode_t vga_mode_640x480_56 = {
+    .default_timing = &vga_timing_640x480_56_default,
+    .pio_program = &video_24mhz_composable,
+    .width = 640,
+    .height = 480,
+    .xscale = 1,
+    .yscale = 1, // keeps in scale for the doubling
+};
+
 #define vga_mode vga_mode_1024x768_70
+// #define vga_mode vga_mode_640x480_56
+
+// number of VGA lines to skip to adjust vertical position of mac video picture
+#define VERTICAL_OFFSET ((vga_mode.height - MAX_LINES) / 2)
 
 void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
     int16_t line_num = scanvideo_scanline_number(buffer->scanline_id);
@@ -107,6 +142,16 @@ void draw_from_sebuffer(scanvideo_scanline_buffer_t *buffer) {
 //        *p++ = COMPOSABLE_EOL_SKIP_ALIGN; // after even # of tokens
     }
     else {
+        // padding to center in, e.g., the 640 resolution
+        if (vga_mode.width > LINEBUFFER_LEN_8*8) {
+            // this will be off by one pixel to keep it an even number
+            *p++ = COMPOSABLE_COLOR_RUN;
+            *p++ = BLACK;
+            *p++ = (vga_mode.width - LINEBUFFER_LEN_8*8) / 2 - 1;
+            *p++ = COMPOSABLE_RAW_1P;
+            *p++ = BLACK;
+        }
+
         // copy the data read from the mac to the out buffer for vga
         *p++ = COMPOSABLE_RAW_RUN;
 

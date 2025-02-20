@@ -4,7 +4,7 @@ Convert the video output of a Mac Plus/SE/Classic using a Raspberry Pi Pico to o
 * A VESA compatible VGA signal.
 * Monochrome composite video.
 
-This is an active adapter that digitally reads the Mac's 512x342@60.15 and converts it. The VGA signal is to 1024x768@70.2 which should work with any VESA compatible VGA monitor. Composite video output is PAL 288p@50/576i@50 format. (Composite video should work with NTSC 480i@60 with some currently unwritten code tweaks.)
+This is an active adapter that digitally reads the Mac's 512x342@60.15 and converts it. The VGA signal is to 1024x768@70.2 which should work with any VESA compatible VGA monitor. There is also an alternative slightly out of VGA 640x480@57.5 option as well. Composite video output is PAL 288p@50/576i@50 format. (Composite video should work with NTSC 480i@60 with some currently unwritten code tweaks.)
 
 My use case for this is using an old Mac SE motherboard I have saved from back in the day. I imagine it could also be useful for if your CRT has died and can't source another, or for direct video capture.
 
@@ -108,6 +108,7 @@ If you wire things up as described above, nothing special required! Just copy th
 If you use an alternate video input pin configuration, the pin assignments can be changed at the top of the `se.h` file.
 
 Choice of VGA or composite video output is specified in `mac.c` by setting the define for `OUTPUT_MODE` to 0 or 1 respectively.
+640x480 VGA resolution is activated by setting the define for `vga_mode` to `vga_mode_640x480_56` in `vga.h`.
 
 If you're using composite video mode, there are several options for it in `composite.h`:
 
