@@ -42,7 +42,10 @@
 // BUT, scanvideo can't do a half divsor, so halve the pixel clock
 // gives a resolution of 512x768, which we can make 512x384 - PERFECT
 
-#define WHITE 0x7FFF
+#define WHITE 0x7FFF // warm white
+// #define WHITE 0xFFDF // cold white
+// #define WHITE 0x05DF // amber
+// #define WHITE 0x07C0 // green
 #define BLACK 0x0000
 #include "lookuptable.h"
 
