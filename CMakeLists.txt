@@ -35,3 +35,7 @@ pico_add_extra_outputs(mac)
 
 pico_enable_stdio_usb(mac 0)
 pico_enable_stdio_uart(mac 0)
+
+pico_set_program_name(mac "mac-se-video-converter")
+pico_set_program_description(mac "Convert video from a Mac Plus/SE/Classic to a VESA VGA signal using a Raspberry Pi Pico")
+pico_set_program_url(mac "https://github.com/guruthree/mac-se-video-converter/")

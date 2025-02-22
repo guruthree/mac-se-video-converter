@@ -39,6 +39,9 @@
 #define VIDEO_PIN 20 // pin 26, UART1_TX
 #define HSYNC_PIN 21 // pin 27, UART1_RX
 #define VSYNC_PIN 22 // pin 29, SD_DAT3
+bi_decl(bi_1pin_with_name(VIDEO_PIN, "Video Input"));
+bi_decl(bi_1pin_with_name(HSYNC_PIN, "HSync Input"));
+bi_decl(bi_1pin_with_name(VSYNC_PIN, "VSync Input"));
 
 // about 340 lines? 345 covers some extra to see edges
 #define MAX_LINES 342

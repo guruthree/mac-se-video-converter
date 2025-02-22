@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2022 guruthree
+ * Copyright (c) 2022-2025 guruthree
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,6 +90,7 @@ const uint8_t LEVEL_WHITE = WHITE_VOLTS * DIVISIONS_PER_VOLT + 0.5;
 #define GREEN_CHANNEL 6
 #define BLUE_CHANNEL  11
 #define OUPUT_CHANNEL RED_CHANNEL
+bi_decl(bi_1pin_with_name(OUPUT_CHANNEL, "Composite out"));
 
 // timings in numbers of samples (bytes)
 const uint16_t SAMPLES_PER_LINE = Timings.scanline * DAC_FREQ / 1e6; // 752 for PAL

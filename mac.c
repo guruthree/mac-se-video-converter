@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2022 guruthree
+ * Copyright (c) 2022-2025 guruthree
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,7 @@
 //#include <stdio.h>
 #include <string.h>
 
+#include "pico/binary_info.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "hardware/gpio.h"
@@ -71,6 +72,7 @@
 #define CLOCK_SPEED 188e6
 
 bool led_status = false;
+bi_decl(bi_1pin_with_name(PICO_DEFAULT_LED_PIN, "Status LED"));
 #include "se.h"
 #if OUTPUT_MODE == 0
 #include "vga.h"
