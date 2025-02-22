@@ -122,6 +122,10 @@ The screen is flickering/tearing, is that normal?
 
  * Yes there is a mismatch between the 60 Hz refresh rate output from the Mac and the conversion to the 70 Hz refresh rate of the VGA, which can result in flickering/tearing. Unfortunately there's no way around this. The refresh rate mismatch is necessary in order to be able to have the underlying pixel clocks be multiples of each other, needed for the PIO clock to be divisible by the system clock of the Pico.
 
+The display says NO SIGNAL, what does this mean?
+
+* The converter was unable to detect a vertical sync (VSYNC) signal, please double-check the wiring.
+
 The colours are inverted! Black is white and white is black!
 
 * Well that's odd, but can be corrected. Edit `mac.c` to change the define for `INVERTED_SIGNAL` to 1 and then rebuild.

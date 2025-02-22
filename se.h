@@ -49,11 +49,38 @@ bi_decl(bi_1pin_with_name(VSYNC_PIN, "VSync Input"));
 #define LINE_OFFSET 26 // ignore the first X lines
 
 // buffers need to be multiple of 4 for 32 bit copies
-#define LINEBUFFER_LEN_32 16  // X*4*8 = # of bits (22?) (needs to be long enough to be beyond end of hsync pulse?)
+#define WIDTH_PIXELS 512
+#define LINEBUFFER_LEN_32 WIDTH_PIXELS/32  // X*4*8 = # of bits (22?) (needs to be long enough to be beyond end of hsync pulse?)
 #define LINEBUFFER_LEN_8 LINEBUFFER_LEN_32*4
 #define BUFFER_LEN_32 MAX_LINES*LINEBUFFER_LEN_32
 #define BUFFER_LEN_8 BUFFER_LEN_32*4
 uint8_t sebuffer[MAX_LINES][LINEBUFFER_LEN_8];
+
+// keep track of the last vsync to be able to display lost sync message
+uint32_t last_vsync_time;
+#define FONT_HEIGHT 7
+#define SIGNAL_LOST1_LEN 18
+uint8_t signal_lost1[FONT_HEIGHT][SIGNAL_LOST1_LEN] = {
+    // message line 1
+    {0xC0,0xE6,0x38,0x80,0xE7,0x01,0xD1,0xF7,0x78,0x0E,0xE0,0x38,0x51,0xE4,0x3D,0x9F,0xF7,0x00},
+    {0x40,0x15,0x45,0x40,0x10,0x00,0x11,0x11,0x05,0x11,0x10,0x45,0x53,0x14,0x44,0x44,0x10,0x01},
+    {0x40,0x15,0x05,0x40,0x10,0x00,0x11,0x11,0x05,0x11,0x10,0x44,0x53,0x14,0x44,0x44,0x10,0x01},
+    {0x40,0x14,0x05,0x9F,0xF3,0x7D,0x11,0x11,0x7D,0xD1,0x17,0x44,0x55,0xF4,0x3D,0xC4,0xF7,0x00},
+    {0x40,0xF4,0x05,0x00,0x14,0x00,0x0A,0x11,0x05,0x11,0x10,0x44,0x99,0x12,0x24,0x44,0x90,0x00},
+    {0x40,0x14,0x45,0x00,0x14,0x00,0x0A,0x11,0x05,0x11,0x10,0x45,0x99,0x12,0x44,0x44,0x10,0x01},
+    {0x40,0x14,0x39,0xC0,0xE3,0x01,0xC4,0xF7,0x78,0x0E,0xE0,0x38,0x11,0xE1,0x45,0x84,0x17,0x01},
+};
+#define SIGNAL_LOST2_LEN 8
+uint8_t signal_lost2[FONT_HEIGHT][SIGNAL_LOST2_LEN] = {
+    // message line 2
+    {0x40,0xE4,0x00,0xDE,0xE7,0x44,0x4E,0x00},
+    {0xC0,0x14,0x01,0x01,0x11,0x4D,0x51,0x00},
+    {0xC0,0x14,0x01,0x01,0x11,0x4C,0x51,0x00},
+    {0x40,0x15,0x01,0x0E,0x11,0x54,0x51,0x00},
+    {0x40,0x16,0x01,0x10,0xD1,0x65,0x5F,0x00},
+    {0x40,0x16,0x01,0x10,0x11,0x65,0x51,0x00},
+    {0x40,0xE4,0x00,0xCF,0xE7,0x44,0xD1,0x07},
+};
 
 uint8_t se_dma_channel;
 PIO se_pio;
@@ -79,6 +106,9 @@ void __isr __time_critical_func(gpio_callback)(uint gpio, uint32_t events) {
         // (this appears to be the only way to set a value of more than 5 bits?)
         pio_sm_put(se_pio, se_pio_sm, (LINEBUFFER_LEN_8*8 - 1) << 16 | (MAX_LINES - 1));
         dma_channel_set_write_addr(se_dma_channel, sebuffer, true);
+
+        // mark when the last vsync was
+        last_vsync_time = to_ms_since_boot(get_absolute_time());
     }
 }
 
@@ -114,8 +144,11 @@ void se_init() {
                           false // start immediately
     );
 
-    // initialise the buffer
-    memset(sebuffer, 0, BUFFER_LEN_8);
+    // initialise the buffer with a black screen
+    memset(sebuffer, 0xFF, BUFFER_LEN_8);
+
+    // initialise vsync lost timeout
+    last_vsync_time = to_ms_since_boot(get_absolute_time());
 
     // setup hsync pin (this was also setup by setup by pio init?)
     gpio_init(HSYNC_PIN);
@@ -131,9 +164,18 @@ void se_init() {
 }
 
 void se_main() {
-    // we dont actually need to do anything regularly
+    // we dont actually _need_ to do anything regularly
     // everything interesting happens in the interrupt
     while (1) {
-        sleep_ms(1); // need some sleep or lines turn out crooked...
+        // but might as well every now and then check if we have sync
+        if (to_ms_since_boot(get_absolute_time()) - last_vsync_time > 50) {
+            // if it's been more than one second, signal is probably lost
+            // write into sebuffer a message to that effect
+            for (uint8_t c = 0; c < FONT_HEIGHT; c++) {
+                memcpy(sebuffer[MAX_LINES/2 - FONT_HEIGHT*3 + c] + LINEBUFFER_LEN_8/2 - SIGNAL_LOST1_LEN/2, signal_lost1[c], SIGNAL_LOST1_LEN*sizeof(uint8_t));
+                memcpy(sebuffer[MAX_LINES/2 + FONT_HEIGHT*2 + c] + LINEBUFFER_LEN_8/2 - SIGNAL_LOST2_LEN/2, signal_lost2[c], SIGNAL_LOST2_LEN*sizeof(uint8_t));
+            }
+        }
+        sleep_ms(10); // need some sleep or lines turn out crooked...
     }
 }
