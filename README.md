@@ -180,6 +180,7 @@ The picture is slightly yellow (or some other amount of not white).
 * [Macintosh Plus Clone via DosFox](https://tech.lgbt/@DosFox/112956255219578599) (without logic level converter)
 * [Macintosh Plus via @TimRustige](https://github.com/guruthree/mac-se-video-converter/issues/5) - required adjusting `nop [23]` to `nop [22]`.
 * [Macintosh Classic II via @TimRustige](https://github.com/guruthree/mac-se-video-converter/issues/6) - required `#define INVERTED_SIGNAL 1`.
+* [Macintosh Classic via @Astro1345321](https://github.com/guruthree/mac-se-video-converter/issues/7) - required `#define INVERTED_SIGNAL 1`.
 
 ### Tested screens
 
@@ -197,6 +198,7 @@ These screens have been reported to work/not work. Please submit PRs/issues if y
 | Dell      | ???            | YES    | via DosFox                    |
 | LG        | M237WDP        | YES    | via @TimRustige               |
 | Eizo      | L367           | YES    | via @TimRustige               |
+| Samsung   | ???            | YES    | via @Astro1345321             |
 
 ## Other similar projects
 
